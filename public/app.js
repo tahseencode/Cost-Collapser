@@ -36,6 +36,14 @@ const btnResetThreshold = document.getElementById('btnResetThreshold');
 const webhookUrlInput = document.getElementById('webhookUrlInput');
 const btnSendTestWebhook = document.getElementById('btnSendTestWebhook');
 
+const recipientEmailInput = document.getElementById('recipientEmailInput');
+const btnSendTestEmail = document.getElementById('btnSendTestEmail');
+const gmailSenderUser = document.getElementById('gmailSenderUser');
+const gmailSenderPass = document.getElementById('gmailSenderPass');
+const btnSaveGmailConfig = document.getElementById('btnSaveGmailConfig');
+const gmailStatusBadge = document.getElementById('gmailStatusBadge');
+
+
 const wakeUpAlertContainer = document.getElementById('wakeUpAlertContainer');
 const alertSummaryText = document.getElementById('alertSummaryText');
 const pendingGateList = document.getElementById('pendingGateList');
@@ -114,6 +122,7 @@ function handleWsMessage(data) {
       state.pendingGates = data.pendingGates || [];
       state.auditLog = data.auditLog || [];
       state.adapters = data.adapters || [];
+      if (data.emailConfig) updateEmailUI(data.emailConfig);
       updateAdaptersDropdown(state.adapters, data.status.activeAdapterId);
       updateMetricsUI(data.status.metrics);
       renderPendingGates();
@@ -128,7 +137,16 @@ function handleWsMessage(data) {
       handleWakeUpAlert(data.data, data.metrics);
       break;
 
+    case 'EMAIL_ALERT_SENT':
+      appendLog('EMAIL', `Dispatched Gmail Price Alert to ${data.emailResult?.recipient || 'configured email'}`);
+      break;
+
+    case 'EMAIL_CONFIG_UPDATED':
+      updateEmailUI(data.config);
+      break;
+
     case 'GATE_CREATED':
+
       state.pendingGates.unshift(data.gate);
       renderPendingGates();
       break;
@@ -494,6 +512,80 @@ btnSendTestWebhook.addEventListener('click', async () => {
     btnSendTestWebhook.textContent = 'Send Webhook';
   }
 });
+
+function updateEmailUI(config) {
+  if (!config) return;
+  if (config.recipient && !recipientEmailInput.value) {
+    recipientEmailInput.value = config.recipient;
+  }
+  if (config.isConfigured) {
+    gmailStatusBadge.textContent = '🟢 SMTP Live';
+    gmailStatusBadge.style.color = 'var(--green)';
+    gmailStatusBadge.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+    gmailStatusBadge.style.background = 'var(--green-bg)';
+  } else {
+    gmailStatusBadge.textContent = '🟡 Simulation / Test Mode';
+    gmailStatusBadge.style.color = 'var(--amber)';
+    gmailStatusBadge.style.borderColor = 'rgba(245, 158, 11, 0.3)';
+    gmailStatusBadge.style.background = 'var(--amber-bg)';
+  }
+}
+
+// Send Test Gmail Alert
+if (btnSendTestEmail) {
+  btnSendTestEmail.addEventListener('click', async () => {
+    const recipient = recipientEmailInput.value.trim();
+    if (!recipient) return alert('Please enter a recipient Gmail address (e.g. user@gmail.com).');
+
+    btnSendTestEmail.disabled = true;
+    btnSendTestEmail.textContent = 'Sending...';
+
+    try {
+      const res = await fetch('/api/email/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipient })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.result.message || `✅ Test Alert successfully dispatched to ${recipient}! Check your inbox.`);
+        appendLog('EMAIL', `Sent test price drop notification to ${recipient}`);
+      } else {
+        alert('Email error: ' + data.error);
+      }
+    } catch (err) {
+      alert('Failed to send test email: ' + err.message);
+    } finally {
+      btnSendTestEmail.disabled = false;
+      btnSendTestEmail.textContent = '✉️ Send Test Alert';
+    }
+  });
+}
+
+// Save Gmail Sender Credentials
+if (btnSaveGmailConfig) {
+  btnSaveGmailConfig.addEventListener('click', async () => {
+    const user = gmailSenderUser.value.trim();
+    const pass = gmailSenderPass.value.trim();
+    const recipient = recipientEmailInput.value.trim();
+
+    try {
+      const res = await fetch('/api/email/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user, pass, recipient })
+      });
+      const data = await res.json();
+      if (data.success) {
+        updateEmailUI(data.config);
+        alert('✅ Gmail settings saved successfully!');
+        appendLog('CONFIG', 'Updated Gmail alert credentials and recipient.');
+      }
+    } catch (err) {
+      alert('Failed to save Gmail settings: ' + err.message);
+    }
+  });
+}
 
 // Modal Events
 btnOpenAddModal.addEventListener('click', () => addModal.style.display = 'flex');

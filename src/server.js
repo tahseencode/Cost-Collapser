@@ -12,6 +12,7 @@ import { approvalGate } from './agent/approvalGate.js';
 import { wakeUpEngine } from './agent/wakeUpEngine.js';
 import { autonomousAgent } from './agent/autonomousAgent.js';
 import { browserAgent } from './agent/browserAgent.js';
+import { emailService } from './services/emailService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,7 +42,8 @@ wss.on('connection', (ws) => {
     history: sentinelMonitor.getRecentHistory().slice(0, 20),
     pendingGates: approvalGate.getPendingGates(),
     auditLog: approvalGate.getAuditLog().slice(0, 10),
-    adapters: adapterEngine.getAllAdapters()
+    adapters: adapterEngine.getAllAdapters(),
+    emailConfig: emailService.getConfig()
   }));
 
   ws.on('close', () => {
@@ -67,13 +69,34 @@ sentinelMonitor.on('check', (entry) => {
   });
 });
 
-sentinelMonitor.on('trigger_alert', (data) => {
+sentinelMonitor.on('trigger_alert', async (data) => {
   broadcast({
     type: 'AGENTIC_WAKE_UP',
     data,
     metrics: costCalculator.getMetrics()
   });
+
+  // Automatically dispatch real-time Gmail Alert!
+  try {
+    const emailResult = await emailService.sendPriceAlertEmail({
+      item: data.result?.item,
+      price: data.result?.price,
+      threshold: data.result?.threshold,
+      currency: data.result?.currency,
+      vendor: data.result?.vendor,
+      summary: data.wakeEvent?.analysis?.executiveSummary,
+      poNumber: data.gate?.gateId
+    });
+
+    broadcast({
+      type: 'EMAIL_ALERT_SENT',
+      emailResult
+    });
+  } catch (err) {
+    console.error('[Gmail Alert Error]', err.message);
+  }
 });
+
 
 sentinelMonitor.on('status_change', (status) => {
   broadcast({
@@ -315,6 +338,32 @@ app.post('/api/webhook/send', async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+
+// 7. Gmail Alert Notifications API
+app.get('/api/email/config', (req, res) => {
+  res.json({ success: true, config: emailService.getConfig() });
+});
+
+app.post('/api/email/config', (req, res) => {
+  try {
+    const config = emailService.updateConfig(req.body);
+    broadcast({ type: 'EMAIL_CONFIG_UPDATED', config });
+    res.json({ success: true, config });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/email/test', async (req, res) => {
+  try {
+    const { recipient } = req.body;
+    const result = await emailService.sendTestEmail(recipient);
+    res.json({ success: true, result });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
 
 // Start Servers
 const PORT = CONFIG.PORT;
