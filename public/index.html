@@ -1,14 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Zero-Token Sentinel | Autonomous Cost-Collapsing AI Procurement</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800;900&display=swap"
+    rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
   <!-- Top Navigation & Global Header -->
   <header class="top-nav">
@@ -23,13 +27,15 @@
           <span class="badge-tag live-badge">LIVE ENGINE</span>
           <span class="badge-tag cost-badge">100% COST COLLAPSED</span>
         </div>
-        <div class="brand-subtitle">Autonomous Webcmd Layer 2 Deterministic Polling with Agentic Wake-Up & Human Gate</div>
+        <div class="brand-subtitle">Autonomous Webcmd Layer 2 Deterministic Polling with Agentic Wake-Up & Human Gate
+        </div>
       </div>
     </div>
 
     <!-- Quick Hackathon Presentation Bar -->
     <div class="demo-quick-bar">
-      <button class="btn btn-danger btn-glow" id="btnTriggerDrop" title="Drops the target price below $50 to instantly wake up the AI agent">
+      <button class="btn btn-danger btn-glow" id="btnTriggerDrop"
+        title="Drops the target price below $50 to instantly wake up the AI agent">
         🚨 Simulate Flash Drop ($39.99)
       </button>
       <button class="btn btn-secondary" id="btnResetDemo" title="Resets mock store and cost metrics">
@@ -43,10 +49,10 @@
 
   <!-- Main Split-Screen Container -->
   <main class="split-container">
-    
+
     <!-- LEFT PANE: Sentinel Live Engine & Cost Collapse Telemetry -->
     <section class="pane left-pane">
-      
+
       <!-- Real-Time Cost Collapse KPI Cards -->
       <div class="kpi-grid">
         <div class="kpi-card zero-token-card">
@@ -187,24 +193,118 @@
 
       <!-- TABS NAVIGATION -->
       <div class="tab-nav">
-        <button class="tab-btn active" data-tab="tab-approval">
+        <button class="tab-btn active" data-tab="tab-browser">
+          🌐 Live Browser AI Agent
+        </button>
+        <button class="tab-btn" data-tab="tab-agent">
+          🤖 Agent Co-Pilot
+        </button>
+        <button class="tab-btn" data-tab="tab-approval">
           🔒 Human Approval Gate 
           <span class="pending-pill" id="pendingGateBadge">0</span>
         </button>
         <button class="tab-btn" data-tab="tab-store">
-          🏪 Live Target Store Simulator
+          🏪 Live Target Store
         </button>
         <button class="tab-btn" data-tab="tab-compiler">
-          ⚙️ Adapter Compiler Studio
+          ⚙️ Adapter Compiler
         </button>
         <button class="tab-btn" data-tab="tab-audit">
-          📜 Execution Audit Log
+          📜 Audit Log
         </button>
       </div>
 
+      <!-- TAB -1: LIVE BROWSER AI AGENT WORKBENCH -->
+      <div class="tab-content active" id="tab-browser">
+        <div class="glass-panel browser-workbench-panel">
+          
+          <!-- Browser Address Bar & Action Controls -->
+          <div class="browser-address-bar">
+            <div class="browser-nav-buttons">
+              <span class="nav-arrow">◀</span>
+              <span class="nav-arrow">▶</span>
+              <span class="nav-arrow" id="btnReloadBrowser" title="Reload Target Page">🔄</span>
+            </div>
+            <div class="url-input-wrapper">
+              <span class="url-lock-icon">🔒</span>
+              <input type="text" id="browserUrlInput" class="browser-url-input" value="http://localhost:4100/products/titan-carbide-drill-5000">
+            </div>
+            <button class="btn btn-primary" id="btnBrowserNavigate">
+              <span>🚀 Navigate</span>
+            </button>
+            <button class="btn btn-secondary" id="btnBrowserInspect">
+              <span>🔍 Scan DOM</span>
+            </button>
+            <button class="btn btn-danger" id="btnBrowserCompile">
+              <span>⚡ Compile 0-Token</span>
+            </button>
+          </div>
+
+          <!-- Browser Agent Status Pill & Target Title -->
+          <div class="browser-meta-strip">
+            <div class="b-meta-item">
+              <span class="status-dot pulsing" style="background: var(--neon-green);"></span>
+              <strong>AGENT STATUS:</strong> <span id="browserAgentStatusText" class="text-neon-green">Ready (Layer 0 Active)</span>
+            </div>
+            <div class="b-meta-item">
+              <strong>TARGET TITLE:</strong> <span id="browserPageTitle">Apex Titan Carbide Drill Bit 5000</span>
+            </div>
+          </div>
+
+          <!-- Visual Browser Viewport Container -->
+          <div class="browser-viewport-container">
+            <div class="viewport-header">
+              <div class="browser-window-dots">
+                <span style="background:#ff5f56;"></span>
+                <span style="background:#ffbd2e;"></span>
+                <span style="background:#27c93f;"></span>
+              </div>
+              <span class="viewport-title-label font-mono" id="viewportTabTitle">Live Browser Viewport (1024x768)</span>
+              <span class="badge-tag live-badge" style="font-size: 10px;">LAYER 0 LIVE FEED</span>
+            </div>
+
+            <div class="viewport-body" id="viewportBody">
+              <!-- Live iframe of the target page -->
+              <iframe id="browserIframe" src="http://localhost:4100/products/titan-carbide-drill-5000" class="browser-live-frame"></iframe>
+
+              <!-- Dynamic Visual Bounding Box Overlays -->
+              <div class="visual-bounding-box box-price" id="boxPriceOverlay" style="top: 245px; left: 540px; width: 190px; height: 50px;">
+                <span class="box-label">🎯 #product-price: $129.99 (99% Conf)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Discovered Semantic Elements Grid -->
+          <div class="discovered-elements-section">
+            <div class="section-subtitle">
+              <span>🧩 Discovered DOM Elements (Auto-Mapped by Browser Agent)</span>
+            </div>
+            <div class="elements-tags-grid" id="discoveredElementsList">
+              <div class="element-tag-pill">
+                <span class="el-type">PRICE:</span>
+                <span class="el-sel font-mono">#product-price</span>
+                <span class="el-val text-neon-green">$129.99</span>
+              </div>
+              <div class="element-tag-pill">
+                <span class="el-type">TITLE:</span>
+                <span class="el-sel font-mono">#product-title</span>
+                <span class="el-val text-neon-cyan">Apex Titan Carbide...</span>
+              </div>
+              <div class="element-tag-pill">
+                <span class="el-type">STOCK:</span>
+                <span class="el-sel font-mono">#stock-status</span>
+                <span class="el-val text-amber">In Stock (42)</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+
       <!-- TAB 1: HUMAN APPROVAL GATE & AGENTIC WAKE-UP -->
       <div class="tab-content active" id="tab-approval">
-        
+
         <!-- Live Alert Banner when Trigger Fires -->
         <div class="alert-box" id="wakeUpAlertContainer" style="display: none;">
           <div class="alert-header">
@@ -262,7 +362,8 @@
               <div class="store-info">
                 <div class="store-tag">HEAVY INDUSTRIAL MRO</div>
                 <div class="store-title" id="simProductTitle">Apex Titan Carbide Drill Bit 5000 (Industrial Grade)</div>
-                <div class="store-sku">SKU: <code id="simProductSku">APX-TCB-5000</code> | Vendor: Apex Industrial Corp</div>
+                <div class="store-sku">SKU: <code id="simProductSku">APX-TCB-5000</code> | Vendor: Apex Industrial Corp
+                </div>
               </div>
             </div>
 
@@ -319,7 +420,8 @@
             </div>
           </div>
           <p class="text-muted" style="font-size: 13px; margin-bottom: 16px;">
-            Compile any web scraper or AI exploration path into a standalone zero-token deterministic JavaScript CLI script that executes in &lt;20ms.
+            Compile any web scraper or AI exploration path into a standalone zero-token deterministic JavaScript CLI
+            script that executes in &lt;20ms.
           </p>
 
           <div class="form-group">
@@ -341,7 +443,8 @@
               <span>COMPILED STANDALONE JAVASCRIPT CLI OUTPUT:</span>
               <button class="btn-copy" id="btnCopyCompiled">Copy Code</button>
             </div>
-            <pre class="code-content font-mono" id="compiledCodeOutput">// Click "Compile" above to generate standalone zero-token CLI code...</pre>
+            <pre class="code-content font-mono"
+              id="compiledCodeOutput">// Click "Compile" above to generate standalone zero-token CLI code...</pre>
           </div>
         </div>
       </div>
@@ -370,7 +473,8 @@
               </thead>
               <tbody id="auditTableBody">
                 <tr>
-                  <td colspan="7" class="text-center text-muted" style="padding: 24px;">No human approval records yet. Simulate a price drop to generate gate history.</td>
+                  <td colspan="7" class="text-center text-muted" style="padding: 24px;">No human approval records yet.
+                    Simulate a price drop to generate gate history.</td>
                 </tr>
               </tbody>
             </table>
@@ -384,4 +488,5 @@
   <!-- Live Audio Beep for Presentation Alarm (synthesized via Web Audio API) -->
   <script src="app.js"></script>
 </body>
+
 </html>

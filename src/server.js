@@ -10,6 +10,8 @@ import { sentinelMonitor } from './sentinel/monitor.js';
 import { costCalculator } from './sentinel/costCalculator.js';
 import { approvalGate } from './agent/approvalGate.js';
 import { wakeUpEngine } from './agent/wakeUpEngine.js';
+import { autonomousAgent } from './agent/autonomousAgent.js';
+import { browserAgent } from './agent/browserAgent.js';
 import { storeRouter } from './mock-store/storeRouter.js';
 import { MOCK_PRODUCTS } from './mock-store/storeData.js';
 
@@ -36,7 +38,7 @@ const clients = new Set();
 
 wss.on('connection', (ws) => {
   clients.add(ws);
-  
+
   // Send initial state upon connection
   ws.send(JSON.stringify({
     type: 'INIT_STATE',
@@ -101,7 +103,23 @@ approvalGate.on('gate_resolved', (gate) => {
   });
 });
 
+browserAgent.on('action', (log) => {
+  broadcast({
+    type: 'BROWSER_ACTION',
+    log,
+    state: browserAgent.getState()
+  });
+});
+
+browserAgent.on('navigation_complete', (state) => {
+  broadcast({
+    type: 'BROWSER_NAVIGATED',
+    state
+  });
+});
+
 // ================= REST API ROUTES =================
+
 
 // 1. Status & Metrics API
 app.get('/api/status', (req, res) => {
@@ -196,7 +214,60 @@ app.post('/api/gate/reject', async (req, res) => {
   }
 });
 
-// 5. Hackathon Live Demo 1-Click Triggers
+// 5. Autonomous AI Agent Co-Pilot API
+app.post('/api/agent/chat', async (req, res) => {
+  try {
+    const { prompt } = req.body;
+    if (!prompt) return res.status(400).json({ error: 'Prompt is required' });
+    const response = await autonomousAgent.chat(prompt);
+    res.json({ success: true, response });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/agent/tools', (req, res) => {
+  res.json({ success: true, tools: autonomousAgent.tools });
+});
+
+
+// 6. Live Browser AI Agent API (Layer 0 & Layer 1 Control)
+app.get('/api/browser/state', (req, res) => {
+  res.json({ success: true, state: browserAgent.getState() });
+});
+
+app.post('/api/browser/navigate', async (req, res) => {
+  try {
+    const { url } = req.body;
+    if (!url) return res.status(400).json({ error: 'URL is required' });
+    const state = await browserAgent.navigate(url);
+    res.json({ success: true, state });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/browser/inspect', async (req, res) => {
+  try {
+    const elements = await browserAgent.autoInspectDOM();
+    res.json({ success: true, elements, state: browserAgent.getState() });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/browser/compile', (req, res) => {
+  try {
+    const { adapterId, threshold } = req.body;
+    const result = browserAgent.compileCurrentTargetToZeroToken(adapterId, threshold);
+    res.json({ success: true, ...result });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// 7. Hackathon Live Demo 1-Click Triggers
+
 app.post('/api/demo/trigger-drop', (req, res) => {
   const targetProduct = MOCK_PRODUCTS['titan-carbide-drill-5000'];
   targetProduct.price = 39.99; // Drop below $50 threshold!

@@ -439,6 +439,201 @@ function appendTerminalHtml(html) {
   }
 }
 
+// ================= BROWSER AI AGENT WORKBENCH HANDLERS =================
+const browserUrlInput = document.getElementById('browserUrlInput');
+const btnBrowserNavigate = document.getElementById('btnBrowserNavigate');
+const btnBrowserInspect = document.getElementById('btnBrowserInspect');
+const btnBrowserCompile = document.getElementById('btnBrowserCompile');
+const btnReloadBrowser = document.getElementById('btnReloadBrowser');
+const browserIframe = document.getElementById('browserIframe');
+const browserAgentStatusText = document.getElementById('browserAgentStatusText');
+const browserPageTitle = document.getElementById('browserPageTitle');
+const discoveredElementsList = document.getElementById('discoveredElementsList');
+const boxPriceOverlay = document.getElementById('boxPriceOverlay');
+
+// Browser Navigate Action
+async function handleBrowserNavigate() {
+  const url = browserUrlInput.value.trim();
+  if (!url) return;
+
+  browserAgentStatusText.textContent = 'Navigating (Layer 0)...';
+  browserAgentStatusText.className = 'text-amber';
+  appendTerminalLog('BROWSER-AGENT', `Navigating to: ${url}`, '#00f0ff');
+
+  browserIframe.src = url;
+
+  try {
+    const res = await fetch('/api/browser/navigate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+    const data = await res.json();
+    if (data.success) {
+      browserAgentStatusText.textContent = 'Active (DOM Mapped)';
+      browserAgentStatusText.className = 'text-neon-green';
+      browserPageTitle.textContent = data.state.pageTitle;
+      renderDiscoveredElements(data.state.discoveredElements);
+      appendTerminalLog('BROWSER-AGENT', `Explored "${data.state.pageTitle}" -> Found ${data.state.discoveredElements.length} elements`, '#00ff88');
+    }
+  } catch (err) {
+    browserAgentStatusText.textContent = 'Error: ' + err.message;
+    browserAgentStatusText.className = 'text-danger';
+  }
+}
+
+// Browser Inspect Action
+async function handleBrowserInspect() {
+  browserAgentStatusText.textContent = 'Scanning DOM Tree...';
+  appendTerminalLog('BROWSER-AGENT', 'Scanning DOM for price & stock elements...', '#9d4edd');
+
+  try {
+    const res = await fetch('/api/browser/inspect', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      browserAgentStatusText.textContent = 'Inspection Complete';
+      browserAgentStatusText.className = 'text-neon-cyan';
+      renderDiscoveredElements(data.elements);
+      appendTerminalLog('BROWSER-AGENT', `Mapped ${data.elements.length} semantic elements`, '#00ff88');
+    }
+  } catch (err) {
+    console.error('Inspection failed:', err);
+  }
+}
+
+// Browser Compile Action
+async function handleBrowserCompile() {
+  browserAgentStatusText.textContent = 'Compiling to Layer 2 Zero-Token Adapter...';
+  appendTerminalLog('BROWSER-AGENT', 'Compiling current mapped DOM to 0-Token CLI adapter...', '#ffb703');
+
+  try {
+    const res = await fetch('/api/browser/compile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adapterId: 'apex-industrial', threshold: 50.00 })
+    });
+    const data = await res.json();
+    if (data.success) {
+      browserAgentStatusText.textContent = 'Compiled (0-Token Ready)';
+      browserAgentStatusText.className = 'text-neon-green';
+      appendTerminalLog('BROWSER-AGENT', `Compiled "${data.adapter.name}"! Polling cost is now $0.00.`, '#00ff88');
+      alert(`⚡ Compiled "${data.adapter.name}" to Zero-Token Layer 2 Runner!\n\nAll continuous monitoring will now run at $0.00.`);
+    }
+  } catch (err) {
+    alert('Compile failed: ' + err.message);
+  }
+}
+
+function renderDiscoveredElements(elements) {
+  if (!elements || elements.length === 0) return;
+  discoveredElementsList.innerHTML = elements.map(el => `
+    <div class="element-tag-pill">
+      <span class="el-type">${el.role}:</span>
+      <span class="el-sel font-mono">${el.selector}</span>
+      <span class="el-val text-neon-green">${el.text ? el.text.substring(0, 30) : ''}</span>
+    </div>
+  `).join('');
+}
+
+// ================= AI AGENT CO-PILOT CHAT HANDLERS =================
+const agentMessagesContainer = document.getElementById('agentMessagesContainer');
+const agentInputForm = document.getElementById('agentInputForm');
+const agentPromptInput = document.getElementById('agentPromptInput');
+
+async function sendAgentPrompt(promptText) {
+  if (!promptText) return;
+
+  // Add User Message to Chat
+  const userHtml = `
+    <div class="agent-msg agent-user-msg">
+      <div class="msg-author">You</div>
+      <div class="msg-text">${escapeHtml(promptText)}</div>
+    </div>
+  `;
+  agentMessagesContainer.insertAdjacentHTML('beforeend', userHtml);
+  agentMessagesContainer.scrollTop = agentMessagesContainer.scrollHeight;
+
+  // Show Typing indicator
+  const typingId = 'typing-' + Date.now();
+  const typingHtml = `
+    <div class="agent-msg agent-ai-msg" id="${typingId}">
+      <div class="msg-author">🤖 Sentinel-Prime</div>
+      <div class="msg-text font-mono text-neon-cyan">Thinking & executing tools...</div>
+    </div>
+  `;
+  agentMessagesContainer.insertAdjacentHTML('beforeend', typingHtml);
+  agentMessagesContainer.scrollTop = agentMessagesContainer.scrollHeight;
+
+  try {
+    const res = await fetch('/api/agent/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: promptText })
+    });
+    const data = await res.json();
+    const typingEl = document.getElementById(typingId);
+    if (typingEl) typingEl.remove();
+
+    if (data.success) {
+      const resp = data.response;
+      let toolBadgesHtml = '';
+      if (resp.toolExecutions && resp.toolExecutions.length > 0) {
+        toolBadgesHtml = resp.toolExecutions.map(t => 
+          `<span class="agent-tool-badge">⚡ Tool: [${t.tool}]</span>`
+        ).join(' ');
+      }
+
+      let thoughtsHtml = '';
+      if (resp.thoughts && resp.thoughts.length > 0) {
+        thoughtsHtml = resp.thoughts.map(th => 
+          `<div class="agent-thought-box">💭 ${escapeHtml(th)}</div>`
+        ).join('');
+      }
+
+      const aiMsgHtml = `
+        <div class="agent-msg agent-ai-msg">
+          <div class="msg-author">🤖 ${resp.agentName}</div>
+          ${thoughtsHtml}
+          <div class="msg-text">${resp.responseMessage.replace(/\n/g, '<br>')}</div>
+          <div style="margin-top: 6px;">${toolBadgesHtml}</div>
+          <div style="font-size: 10px; color: #64748b; margin-top: 6px;">Latency: ${resp.latencyMs}ms | Tokens: ${resp.tokensUsed}</div>
+        </div>
+      `;
+      agentMessagesContainer.insertAdjacentHTML('beforeend', aiMsgHtml);
+      agentMessagesContainer.scrollTop = agentMessagesContainer.scrollHeight;
+    }
+  } catch (err) {
+    const typingEl = document.getElementById(typingId);
+    if (typingEl) typingEl.remove();
+    alert('Agent chat error: ' + err.message);
+  }
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// Wire Event Listeners
+if (btnBrowserNavigate) btnBrowserNavigate.addEventListener('click', handleBrowserNavigate);
+if (btnBrowserInspect) btnBrowserInspect.addEventListener('click', handleBrowserInspect);
+if (btnBrowserCompile) btnBrowserCompile.addEventListener('click', handleBrowserCompile);
+if (btnReloadBrowser) btnReloadBrowser.addEventListener('click', () => {
+  if (browserIframe) browserIframe.src = browserUrlInput.value;
+});
+
+if (agentInputForm) {
+  agentInputForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const prompt = agentPromptInput.value.trim();
+    if (prompt) {
+      sendAgentPrompt(prompt);
+      agentPromptInput.value = '';
+    }
+  });
+}
+
 // Tab Switching
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -446,9 +641,11 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     btn.classList.add('active');
     const tabId = btn.getAttribute('data-tab');
-    document.getElementById(tabId).classList.add('active');
+    const targetTab = document.getElementById(tabId);
+    if (targetTab) targetTab.classList.add('active');
   });
 });
+
 
 // Event Listeners
 btnTriggerDrop.addEventListener('click', triggerFlashDrop);
