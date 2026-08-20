@@ -5,8 +5,9 @@ export const CONFIG = {
   PORT: parseInt(process.env.PORT || '3000', 10),
   MOCK_STORE_PORT: parseInt(process.env.MOCK_STORE_PORT || '4100', 10),
   POLL_INTERVAL_SEC: parseInt(process.env.POLL_INTERVAL_SEC || '5', 10),
-  TARGET_PRICE_THRESHOLD: parseFloat(process.env.TARGET_PRICE_THRESHOLD || '50.00'),
-  DEFAULT_ADAPTER: process.env.DEFAULT_ADAPTER || 'apex-industrial',
+  TARGET_PRICE_THRESHOLD: parseFloat(process.env.TARGET_PRICE_THRESHOLD || '55.00'),
+  DEFAULT_ADAPTER: process.env.DEFAULT_ADAPTER || 'live-books-attic',
+
   GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
   OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
   SLACK_WEBHOOK_URL: process.env.SLACK_WEBHOOK_URL || '',

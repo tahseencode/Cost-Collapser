@@ -3,228 +3,232 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cost Collapser | Zero-Token AI Web Monitoring & Procurement</title>
+  <title>Cost Collapser | Zero-Token AI Web Intelligence & Procurement</title>
+  <meta name="description" content="Autonomous AI Agent that eliminates LLM token costs for continuous web monitoring and procurement.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 
-  <!-- Top Navigation Bar -->
-  <header class="navbar">
-    <div class="nav-brand">
-      <div class="brand-icon">⚡</div>
-      <div>
-        <div class="brand-name">Cost Collapser</div>
-        <div class="brand-tagline">Zero-Token AI Web Monitoring</div>
+  <!-- Top Navigation Header -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand-group">
+        <div class="brand-icon">⚡</div>
+        <div class="brand-text">
+          <div class="brand-title">Cost Collapser</div>
+          <div class="brand-subtitle">Zero-Token AI Web Intelligence & Automated Procurement</div>
+        </div>
       </div>
-    </div>
 
-    <div class="nav-status">
-      <span class="status-indicator online"></span>
-      <span class="status-text">Monitoring Active &bull; 0 Tokens/Check</span>
-    </div>
-
-    <div class="nav-actions">
-      <button class="btn btn-warning" id="btnTriggerDrop" title="Test price drop alert below $50">
-        📉 Trigger Price Drop ($39.99)
-      </button>
-      <button class="btn btn-outline" id="btnResetBaseline" title="Reset price to standard baseline">
-        🔄 Reset Price
-      </button>
+      <div class="header-status">
+        <div class="status-indicator active">
+          <span class="status-dot"></span>
+          <span id="monitorStatusText">LIVE MONITORING ACTIVE</span>
+        </div>
+        <div class="poll-badge" id="pollIntervalBadge">5s interval</div>
+      </div>
     </div>
   </header>
 
-  <!-- Main Dashboard Container -->
-  <main class="dashboard-grid">
+  <!-- Main Container -->
+  <main class="main-container">
 
-    <!-- TOP: 3 Clear Impact Metric Cards -->
-    <section class="metrics-row">
-      <div class="metric-card highlight-card">
-        <div class="metric-label">POLLING TOKEN COST</div>
-        <div class="metric-number text-green">0 <span class="metric-unit">TOKENS</span></div>
-        <div class="metric-desc">$0.00 spent during 24/7 site monitoring</div>
+    <!-- Top Row: Cost & Token Savings Metrics -->
+    <section class="metrics-grid">
+      <div class="metric-card highlight">
+        <div class="metric-label">COST COLLAPSER POLLING TOKENS</div>
+        <div class="metric-value text-green">0 <span class="metric-unit">TOKENS ($0.00)</span></div>
+        <div class="metric-subtext" id="kpiEfficiency">100% LLM Token Cost Reduction</div>
       </div>
 
       <div class="metric-card">
-        <div class="metric-label">COST SAVINGS</div>
-        <div class="metric-number text-cyan" id="kpiDollarsSaved">$0.00</div>
-        <div class="metric-desc" id="kpiEfficiency">100% token cost reduction</div>
+        <div class="metric-label">TOTAL DOLLARS SAVED</div>
+        <div class="metric-value text-cyan" id="kpiDollarsSaved">$0.00</div>
+        <div class="metric-subtext" id="kpiTraditionalTokens">Traditional LLM burn: 0 tokens</div>
       </div>
 
       <div class="metric-card">
-        <div class="metric-label">CHECKS PERFORMED</div>
-        <div class="metric-number" id="kpiChecksCount">0 <span class="metric-unit">CHECKS</span></div>
-        <div class="metric-desc" id="kpiTraditionalTokens">Traditional LLM burn: 0 tokens</div>
+        <div class="metric-label">CONTINUOUS WEB CHECKS</div>
+        <div class="metric-value" id="kpiChecksCount">0 <span class="metric-unit">CHECKS</span></div>
+        <div class="metric-subtext">Zero token burn per execution</div>
       </div>
     </section>
 
-    <!-- MIDDLE: 2 Clean Main Columns -->
-    <div class="main-columns">
+    <!-- Middle Row: Target Control & AI Approval Gate -->
+    <div class="two-col-layout">
 
-      <!-- LEFT COLUMN: Target Monitor & Price Controller -->
-      <section class="card monitor-card">
+      <!-- Left Column: Active Monitored Target -->
+      <section class="card target-card">
         <div class="card-header">
-          <h2 class="card-title">🎯 Active Monitored Target</h2>
-          <span class="badge badge-green">LIVE</span>
+          <div>
+            <div class="card-title">Live Monitored Web Target</div>
+            <div class="card-subtitle">Select any live public website or add your own custom URL</div>
+          </div>
+          <button class="btn btn-sm btn-outline" id="btnOpenAddModal">➕ Add Custom URL</button>
         </div>
 
-        <div class="target-info-box">
-          <div class="target-icon">🔩</div>
-          <div class="target-details">
-            <h3 class="target-name" id="targetTitle">Apex Titan Carbide Drill Bit 5000</h3>
-            <div class="target-meta">Vendor: Apex Industrial &bull; SKU: APX-TCB-5000</div>
+        <div class="card-body">
+          <!-- Target Switcher Dropdown -->
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label">Active Monitoring Target</label>
+            <select id="targetSelector" class="form-select">
+              <option value="live-books-attic">📚 Books Store (Live Web) - A Light in the Attic</option>
+              <option value="live-books-velvet">📚 Books Store (Live Web) - Tipping the Velvet</option>
+              <option value="live-crypto-eth">💎 Live Ethereum Market Price (CoinGecko API)</option>
+            </select>
           </div>
-        </div>
 
-        <!-- Price Display Grid -->
-        <div class="price-display-grid">
-          <div class="price-box">
-            <div class="price-box-label">Current Price</div>
-            <div class="price-box-val" id="targetCurrentPrice">$129.99</div>
-          </div>
-          <div class="price-box">
-            <div class="price-box-label">Alert Threshold</div>
-            <div class="price-box-val text-amber">&le; $50.00</div>
-          </div>
-          <div class="price-box">
-            <div class="price-box-label">Inventory Status</div>
-            <div class="price-box-val text-green" id="targetStockStatus">In Stock</div>
-          </div>
-        </div>
-
-        <!-- Interactive Price Slider -->
-        <div class="slider-section">
-          <div class="slider-header">
-            <span>Adjust Target Site Price:</span>
-            <span class="slider-price-val" id="sliderPriceDisplay">$129.99</span>
-          </div>
-          <input type="range" id="priceSlider" min="20" max="200" step="0.5" value="129.99" class="slider-input">
-          <div class="slider-ticks">
-            <span class="text-green">$20 (Discount)</span>
-            <span class="text-amber">🎯 $50 (Threshold)</span>
-            <span>$200 (MSRP)</span>
-          </div>
-        </div>
-
-        <!-- Quick Price Buttons -->
-        <div class="quick-buttons-row">
-          <button class="btn btn-sm btn-danger" onclick="setSimPrice(39.99)">Set to $39.99 (Drop)</button>
-          <button class="btn btn-sm btn-warning" onclick="setSimPrice(48.50)">Set to $48.50 (Alert)</button>
-          <button class="btn btn-sm btn-outline" onclick="setSimPrice(129.99)">Reset to $129.99</button>
-        </div>
-      </section>
-
-
-      <!-- RIGHT COLUMN: Human Approval Gate & AI Alerts -->
-      <section class="card approval-card">
-        <div class="card-header">
-          <h2 class="card-title">🔒 AI Decision & Approval Gate</h2>
-          <span class="badge badge-amber" id="pendingGateBadge">0 PENDING</span>
-        </div>
-
-        <!-- Alert Notification Banner (Hidden until price drops) -->
-        <div class="alert-banner" id="wakeUpAlertContainer" style="display: none;">
-          <div class="alert-banner-header">
-            <span class="pulse-dot"></span>
-            <strong>PRICE TARGET REACHED</strong>
-          </div>
-          <div class="alert-banner-text" id="alertSummaryText">
-            Cost Collapser detected a price drop below $50.00 and prepared a purchase recommendation.
-          </div>
-        </div>
-
-        <!-- Container for Approval Gate Cards -->
-        <div id="pendingGateList">
-          <div class="empty-state" id="emptyGateState">
-            <div class="empty-icon">🛡️</div>
-            <div class="empty-title">Cost Collapser Standing By</div>
-            <div class="empty-subtitle">
-              Monitoring target site with <strong>0 tokens</strong>.<br>
-              When a price drops below $50.00, the AI agent will analyze the deal and request human approval here.
+          <!-- Product Details Banner -->
+          <div class="target-info-box">
+            <div class="target-title-row">
+              <span class="target-item-title" id="targetTitle">A Light in the Attic</span>
+              <a id="targetExternalLink" href="https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html" target="_blank" rel="noopener" class="external-link">
+                Open Real Web Page ↗
+              </a>
             </div>
-            <button class="btn btn-primary" style="margin-top: 16px;" onclick="triggerFlashDrop()">
-              📉 Test Price Drop Alert ($39.99)
-            </button>
-          </div>
-        </div>
+            <div class="target-vendor-text" id="targetVendor">Vendor: Books to Scrape Global Ltd</div>
 
-        <!-- Recent Purchase Orders -->
-        <div id="recentPoSection" style="display: none; margin-top: 16px;">
-          <div class="sub-header">Latest Executed Orders</div>
-          <div id="recentPoList"></div>
-        </div>
-      </section>
-
-    </div>
-
-
-    <!-- BOTTOM: Clean 3-Tab Section (AI Chat, Activity Logs, Audit Trail) -->
-    <section class="card bottom-card">
-      <div class="tab-header">
-        <button class="tab-btn active" data-tab="tab-chat">🤖 Chat with Cost Collapser</button>
-        <button class="tab-btn" data-tab="tab-logs">📜 Live Activity Logs</button>
-        <button class="tab-btn" data-tab="tab-audit">📦 Purchase Order Audit Trail</button>
-      </div>
-
-      <!-- TAB 1: AI ASSISTANT CHAT -->
-      <div class="tab-pane active" id="tab-chat">
-        <div class="chat-container">
-          <div class="chat-messages" id="agentMessagesContainer">
-            <div class="chat-bubble ai-bubble">
-              <div class="bubble-sender">🤖 Cost Collapser AI</div>
-              <div class="bubble-content">
-                Hello! I am <strong>Cost Collapser</strong>, your zero-token AI web monitoring and procurement assistant. I monitor supplier websites for free ($0.00 in LLM tokens) and alert you only when high-value opportunities arise.
+            <div class="target-stats-grid">
+              <div class="target-stat-item">
+                <div class="stat-lbl">CURRENT LIVE PRICE</div>
+                <div class="stat-val text-green" id="targetCurrentPrice">£51.77</div>
+              </div>
+              <div class="target-stat-item">
+                <div class="stat-lbl">ALERT THRESHOLD</div>
+                <div class="stat-val" id="targetThresholdDisplay">£55.00</div>
+              </div>
+              <div class="target-stat-item">
+                <div class="stat-lbl">AVAILABILITY</div>
+                <div class="stat-val text-green" id="targetStockStatus">In Stock</div>
+              </div>
+              <div class="target-stat-item">
+                <div class="stat-lbl">HTTP LATENCY</div>
+                <div class="stat-val text-cyan" id="targetLatency">0ms</div>
               </div>
             </div>
           </div>
 
-          <div class="chat-quick-actions">
-            <button class="chip" onclick="sendAgentPrompt('What is the current price and stock status of our monitored drill bit?')">
-              🔍 Check Current Price
-            </button>
-            <button class="chip" onclick="sendAgentPrompt('How much money and tokens have we saved so far?')">
-              💰 Calculate Savings
-            </button>
-            <button class="chip" onclick="sendAgentPrompt('Trigger price drop to $39.99 and evaluate the purchase')">
-              📉 Trigger Price Drop & Evaluate
-            </button>
+          <!-- Adjust Threshold & Trigger Alert Controls -->
+          <div class="threshold-controls-box">
+            <div class="threshold-title-row">
+              <span class="form-label" style="margin: 0;">Set Alert Threshold (Price &le; Threshold triggers AI)</span>
+              <span class="threshold-current-badge" id="thresholdValueBadge">$55.00</span>
+            </div>
+
+            <div class="threshold-input-row">
+              <input type="number" step="0.50" id="thresholdInput" class="form-input" value="55.00">
+              <button class="btn btn-primary" id="btnUpdateThreshold">Save Threshold</button>
+            </div>
+            
+            <div class="quick-trigger-btns">
+              <button class="btn btn-sm btn-outline" id="btnSetThresholdTrigger">
+                🚨 Trigger Alert (Set Threshold &ge; Current Price)
+              </button>
+              <button class="btn btn-sm btn-outline" id="btnResetThreshold">
+                🔄 Reset Threshold Below Price
+              </button>
+            </div>
           </div>
 
-          <form class="chat-input-bar" id="agentInputForm">
-            <input type="text" id="agentPromptInput" class="chat-input" placeholder="Ask Cost Collapser anything..." autocomplete="off">
+          <!-- Real Webhook Notification Configuration -->
+          <div class="webhook-config-box">
+            <div class="webhook-title">🔔 Real-Time Webhook Alert Dispatcher (Discord / Slack)</div>
+            <div class="webhook-input-group">
+              <input type="url" id="webhookUrlInput" class="form-input form-input-sm" placeholder="https://discord.com/api/webhooks/... or https://hooks.slack.com/...">
+              <button class="btn btn-sm btn-outline" id="btnSendTestWebhook">Send Webhook</button>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Right Column: AI Decision & Human Approval Gate -->
+      <section class="card approval-card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">AI Decision & Human Approval Gate</div>
+            <div class="card-subtitle">Autonomous reasoning briefings awaiting human sign-off</div>
+          </div>
+          <span class="badge" id="pendingGateBadge">0 PENDING</span>
+        </div>
+
+        <div class="card-body">
+          <!-- Wake-Up Banner (Hidden until triggered) -->
+          <div class="wake-up-banner" id="wakeUpAlertContainer" style="display: none;">
+            <div class="banner-title">🚨 Price Target Breached — AI Agent Awakened!</div>
+            <div class="banner-text" id="alertSummaryText">
+              Live price has crossed your alert threshold. The AI agent analyzed the deal and prepared a purchase decision below.
+            </div>
+          </div>
+
+          <!-- Pending Gates Container -->
+          <div class="pending-gate-list" id="pendingGateList">
+            <div class="empty-state" id="emptyGateState">
+              <div class="empty-icon">🛡️</div>
+              <div class="empty-title">Cost Collapser Standing By</div>
+              <div class="empty-subtitle">
+                Monitoring live web targets at <strong>0 tokens ($0.00)</strong>.<br>
+                When a price triggers your threshold, the AI agent will formulate a purchase order recommendation here for your approval.
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- Bottom Section: Tabs for Agent Chat, Activity Log, and Audit Trail -->
+    <section class="card bottom-card">
+      <div class="tab-bar">
+        <button class="tab-btn active" data-tab="tab-chat">🤖 Chat with Cost Collapser</button>
+        <button class="tab-btn" data-tab="tab-logs">📜 Live Activity Logs (0 Tokens)</button>
+        <button class="tab-btn" data-tab="tab-audit">📦 Purchase Order Audit Trail</button>
+      </div>
+
+      <!-- Tab 1: AI Agent Chat -->
+      <div class="tab-pane active" id="tab-chat">
+        <div class="chat-wrapper">
+          <div class="chat-messages" id="agentMessagesContainer">
+            <div class="chat-bubble ai-bubble">
+              <div class="bubble-sender">🤖 Cost Collapser AI</div>
+              <div>Hello! I am your autonomous AI web agent. I monitor live websites at <strong>$0.00 token cost</strong> and alert you with deal intelligence when price conditions are met.<br><br>You can ask me to check real web prices, review cost savings, or approve purchase orders!</div>
+            </div>
+          </div>
+
+          <form class="chat-input-row" id="agentInputForm">
+            <input type="text" id="agentPromptInput" class="form-input" placeholder="Ask Cost Collapser to check live prices, review token savings, or evaluate deals..." autocomplete="off">
             <button type="submit" class="btn btn-primary">Send</button>
           </form>
         </div>
       </div>
 
-      <!-- TAB 2: LIVE ACTIVITY LOGS -->
+      <!-- Tab 2: Activity Logs -->
       <div class="tab-pane" id="tab-logs">
-        <div class="logs-wrapper">
-          <div class="logs-header">
-            <span>REAL-TIME 0-TOKEN CHECKS</span>
-            <button class="btn btn-sm btn-outline" id="btnClearLogs">Clear</button>
-          </div>
-          <div class="logs-body" id="terminalLogs">
-            <!-- Real-time logs stream here -->
-          </div>
+        <div class="logs-header">
+          <span style="color: var(--text-muted); font-size: 13px;">Real-time stream of zero-token deterministic requests:</span>
+          <button class="btn btn-sm btn-outline" id="btnClearLogs">Clear Log</button>
+        </div>
+        <div class="terminal-logs" id="terminalLogs">
+          <div class="log-line text-muted">[System] Ready. Continuous 0-token monitoring initiated.</div>
         </div>
       </div>
 
-      <!-- TAB 3: AUDIT TRAIL -->
+      <!-- Tab 3: PO Audit Trail -->
       <div class="tab-pane" id="tab-audit">
-        <div class="table-wrapper">
-          <table class="data-table">
+        <div class="table-responsive">
+          <table class="audit-table">
             <thead>
               <tr>
                 <th>Gate ID</th>
-                <th>Time</th>
-                <th>Item</th>
+                <th>Timestamp</th>
+                <th>Target Item</th>
                 <th>Price</th>
                 <th>Status</th>
                 <th>Approved By</th>
-                <th>Purchase Order #</th>
+                <th>PO Number</th>
               </tr>
             </thead>
             <tbody id="auditTableBody">
@@ -235,11 +239,45 @@
           </table>
         </div>
       </div>
-
     </section>
 
   </main>
 
-  <script src="app.js"></script>
+  <!-- Modal: Add Custom Web URL Target -->
+  <div class="modal-backdrop" id="addModal" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">➕ Add Custom Live Website URL</div>
+        <button class="modal-close" id="btnCloseAddModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+          Enter any public website URL or JSON API endpoint. Cost Collapser will extract the item name and price automatically.
+        </p>
+
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label class="form-label">Target Website URL *</label>
+          <input type="url" id="newTargetUrl" class="form-input" placeholder="https://books.toscrape.com/catalogue/..." required>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label class="form-label">Target Name / Label</label>
+          <input type="text" id="newTargetName" class="form-input" placeholder="e.g. My Industrial Drill Bit">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label class="form-label">Alert Price Threshold ($ / £ / €) *</label>
+          <input type="number" step="0.01" id="newTargetThreshold" class="form-input" placeholder="50.00" value="50.00" required>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn btn-outline" id="btnCancelAddModal">Cancel</button>
+          <button class="btn btn-primary" id="btnSubmitAddTarget">Add & Start Monitoring</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
 </body>
 </html>

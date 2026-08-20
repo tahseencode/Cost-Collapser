@@ -16,31 +16,32 @@ export class AdapterEngine {
 
   registerAdapter(adapterConfig) {
     if (!adapterConfig.id || !adapterConfig.url) {
-      throw new Error('Adapter must have an id and url');
+      throw new Error('Target must have an id and url');
     }
-    this.adapters.set(adapterConfig.id, {
-      type: 'html-selector',
-      threshold: 50.0,
+    const registered = {
+      type: adapterConfig.type || 'html-selector',
+      threshold: parseFloat(adapterConfig.threshold || 50.0),
       selectors: {
-        item: '#product-title, h1',
-        price: '#product-price, .price',
-        currency: '#currency-symbol',
-        inStock: '#stock-status',
-        sku: '#product-sku',
-        vendor: '#vendor-name'
+        item: adapterConfig.selectors?.item || 'h1, #product-title, .product-title, .title',
+        price: adapterConfig.selectors?.price || '.price_color, .price, #product-price, .product-price',
+        currency: adapterConfig.selectors?.currency || '.price',
+        inStock: adapterConfig.selectors?.inStock || '.instock, .availability, #stock-status',
+        sku: adapterConfig.selectors?.sku || '.sku, #product-sku',
+        vendor: adapterConfig.selectors?.vendor || 'Live Web Supplier'
       },
       parseRules: {
-        priceRegex: /[\$€£]?\s*([0-9]+(?:\.[0-9]{2})?)/,
+        priceRegex: /[£\$€]?\s*([0-9]+(?:\.[0-9]{2})?)/,
         inStockRegex: /in stock|available/i
       },
       ...adapterConfig
-    });
-    return this.adapters.get(adapterConfig.id);
+    };
+    this.adapters.set(adapterConfig.id, registered);
+    return registered;
   }
 
   /**
-   * Layer 2: Deterministic Zero-Token Extraction
-   * Fetches DOM and evaluates strict CSS selectors in <50ms with 0 tokens.
+   * Layer 2: Deterministic Zero-Token Live Execution
+   * Executes live HTTP fetch against real public web pages or APIs with 0 LLM tokens.
    */
   async execute(adapterIdOrConfig) {
     const startTime = performance.now();
@@ -49,14 +50,14 @@ export class AdapterEngine {
       : adapterIdOrConfig;
 
     if (!adapter) {
-      throw new Error(`Adapter "${adapterIdOrConfig}" not found`);
+      throw new Error(`Target adapter "${adapterIdOrConfig}" not found`);
     }
 
     try {
       const response = await fetch(adapter.url, {
         headers: {
-          'User-Agent': 'ZeroTokenSentinel/1.0 (Autonomous-Procurement-Agent)',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 CostCollapser/2.0 (Autonomous-Zero-Token-Monitor)',
+          'Accept': 'text/html,application/xhtml+xml,application/json,application/xml;q=0.9,*/*;q=0.8'
         }
       });
 
@@ -64,31 +65,86 @@ export class AdapterEngine {
         throw new Error(`HTTP ${response.status}: Failed to fetch ${adapter.url}`);
       }
 
+      // Handle JSON API Target (e.g. CoinGecko, public financial APIs)
+      if (adapter.type === 'json-api' || response.headers.get('content-type')?.includes('application/json')) {
+        const jsonData = await response.json();
+        let price = 0;
+        if (adapter.jsonPath) {
+          const parts = adapter.jsonPath.split('.');
+          let curr = jsonData;
+          for (const p of parts) {
+            if (curr && curr[p] !== undefined) curr = curr[p];
+          }
+          price = typeof curr === 'number' ? curr : parseFloat(curr) || 0;
+        } else {
+          price = Object.values(jsonData)[0]?.usd || Object.values(jsonData)[0] || 0;
+        }
+
+        const latencyMs = Math.round(performance.now() - startTime);
+        return {
+          success: true,
+          adapterId: adapter.id,
+          item: adapter.selectors?.item || adapter.name,
+          price: parseFloat(price.toFixed(2)),
+          currency: '$',
+          inStock: true,
+          sku: 'API-LIVE-FEED',
+          vendor: adapter.selectors?.vendor || 'Real-Time Market API',
+          threshold: adapter.threshold,
+          triggered: price > 0 && price <= adapter.threshold,
+          timestamp: new Date().toISOString(),
+          latencyMs,
+          tokensConsumed: 0
+        };
+      }
+
+      // Handle Live Web HTML Pages
       const html = await response.text();
       const $ = cheerio.load(html);
 
-      // Extract raw fields using selectors
-      const rawItem = $(adapter.selectors.item).first().text().trim() || 'Unknown Item';
-      const rawPrice = $(adapter.selectors.price).first().text().trim() || '0';
-      const rawCurrency = adapter.selectors.currency ? $(adapter.selectors.currency).first().text().trim() || '$' : '$';
-      const rawStock = adapter.selectors.inStock ? $(adapter.selectors.inStock).first().text().trim() : 'In Stock';
-      const rawSku = adapter.selectors.sku ? $(adapter.selectors.sku).first().text().trim() : 'N/A';
-      const rawVendor = adapter.selectors.vendor ? $(adapter.selectors.vendor).first().text().trim() : 'Apex Industrial Supply';
+      // Extract raw title
+      let rawItem = $(adapter.selectors?.item || 'h1').first().text().trim();
+      if (!rawItem) rawItem = $('title').text().trim() || adapter.name || 'Live Web Product';
 
-      // Parse price
+      // Extract price using selectors or fallback regex
+      let rawPrice = '';
+      if (adapter.selectors?.price) {
+        rawPrice = $(adapter.selectors.price).first().text().trim();
+      }
+      
       let cleanPrice = 0;
-      const priceRegex = adapter.parseRules?.priceRegex || /[\$€£]?\s*([0-9]+(?:\.[0-9]{2})?)/;
-      const priceMatch = rawPrice.match(priceRegex);
-      if (priceMatch) {
-        cleanPrice = parseFloat(priceMatch[1] || priceMatch[0].replace(/[^0-9.]/g, ''));
-      } else {
-        cleanPrice = parseFloat(rawPrice.replace(/[^0-9.]/g, '')) || 0;
+      if (rawPrice) {
+        const priceMatch = rawPrice.match(/[0-9]+(?:\.[0-9]{2})?/);
+        if (priceMatch) cleanPrice = parseFloat(priceMatch[0]);
       }
 
-      // Parse stock
-      const inStockRegex = adapter.parseRules?.inStockRegex || /in stock|available/i;
-      const inStock = inStockRegex.test(rawStock);
+      // If price wasn't found by explicit selector, perform semantic search in DOM
+      if (!cleanPrice) {
+        $('*').each((i, el) => {
+          if ($(el).children().length === 0) {
+            const txt = $(el).text().trim();
+            const match = txt.match(/^[£\$€]\s*([0-9]+(?:\.[0-9]{2}))$/);
+            if (match) {
+              cleanPrice = parseFloat(match[1]);
+              rawPrice = txt;
+              return false; // break
+            }
+          }
+        });
+      }
 
+      // Extract currency symbol
+      let currency = '$';
+      if (rawPrice.includes('£')) currency = '£';
+      else if (rawPrice.includes('€')) currency = '€';
+      else if (rawPrice.includes('$')) currency = '$';
+
+      // Extract stock
+      const stockElText = $(adapter.selectors?.inStock || '.availability, #stock-status').first().text().trim();
+      const inStock = stockElText ? !/out of stock|unavailable/i.test(stockElText) : true;
+
+      const sku = $(adapter.selectors?.sku || '.sku').first().text().trim() || 'WEB-LIVE-TARGET';
+      const vendor = adapter.selectors?.vendor || 'Live Web Target';
       const latencyMs = Math.round(performance.now() - startTime);
 
       return {
@@ -96,16 +152,17 @@ export class AdapterEngine {
         adapterId: adapter.id,
         item: rawItem,
         price: cleanPrice,
-        currency: rawCurrency.replace(/[0-9.]/g, '').trim() || '$',
-        inStock: inStock,
-        sku: rawSku,
-        vendor: rawVendor,
+        currency,
+        inStock,
+        sku,
+        vendor,
         threshold: adapter.threshold,
         triggered: cleanPrice > 0 && cleanPrice <= adapter.threshold,
         timestamp: new Date().toISOString(),
         latencyMs,
-        tokensConsumed: 0 // ZERO TOKENS!
+        tokensConsumed: 0 // 0 TOKENS!
       };
+
     } catch (error) {
       const latencyMs = Math.round(performance.now() - startTime);
       return {

@@ -1,15 +1,15 @@
 /**
- * Cost Collapser - Client Application
- * Zero-token autonomous monitoring, real-time WebSocket telemetry, and human approval gate.
+ * Cost Collapser - Real Live Web Intelligence & Automated Procurement
  */
 
 let ws = null;
 let state = {
-  status: { isRunning: true, pollIntervalSec: 5, activeAdapterId: 'apex-industrial' },
+  status: { isRunning: true, pollIntervalSec: 5, activeAdapterId: 'live-books-attic' },
   metrics: null,
   pendingGates: [],
   auditLog: [],
-  adapters: []
+  adapters: [],
+  currentAdapter: null
 };
 
 // UI Elements
@@ -18,15 +18,23 @@ const kpiEfficiency = document.getElementById('kpiEfficiency');
 const kpiChecksCount = document.getElementById('kpiChecksCount');
 const kpiTraditionalTokens = document.getElementById('kpiTraditionalTokens');
 
+const targetSelector = document.getElementById('targetSelector');
 const targetTitle = document.getElementById('targetTitle');
+const targetVendor = document.getElementById('targetVendor');
+const targetExternalLink = document.getElementById('targetExternalLink');
 const targetCurrentPrice = document.getElementById('targetCurrentPrice');
+const targetThresholdDisplay = document.getElementById('targetThresholdDisplay');
 const targetStockStatus = document.getElementById('targetStockStatus');
-const sliderPriceDisplay = document.getElementById('sliderPriceDisplay');
-const priceSlider = document.getElementById('priceSlider');
+const targetLatency = document.getElementById('targetLatency');
 
-const btnTriggerDrop = document.getElementById('btnTriggerDrop');
-const btnResetBaseline = document.getElementById('btnResetBaseline');
-const btnClearLogs = document.getElementById('btnClearLogs');
+const thresholdInput = document.getElementById('thresholdInput');
+const thresholdValueBadge = document.getElementById('thresholdValueBadge');
+const btnUpdateThreshold = document.getElementById('btnUpdateThreshold');
+const btnSetThresholdTrigger = document.getElementById('btnSetThresholdTrigger');
+const btnResetThreshold = document.getElementById('btnResetThreshold');
+
+const webhookUrlInput = document.getElementById('webhookUrlInput');
+const btnSendTestWebhook = document.getElementById('btnSendTestWebhook');
 
 const wakeUpAlertContainer = document.getElementById('wakeUpAlertContainer');
 const alertSummaryText = document.getElementById('alertSummaryText');
@@ -34,20 +42,31 @@ const pendingGateList = document.getElementById('pendingGateList');
 const pendingGateBadge = document.getElementById('pendingGateBadge');
 const auditTableBody = document.getElementById('auditTableBody');
 const terminalLogs = document.getElementById('terminalLogs');
+const btnClearLogs = document.getElementById('btnClearLogs');
 
 const agentMessagesContainer = document.getElementById('agentMessagesContainer');
 const agentInputForm = document.getElementById('agentInputForm');
 const agentPromptInput = document.getElementById('agentPromptInput');
 
-// Play subtle alert tone on price drop
+// Modal Elements
+const addModal = document.getElementById('addModal');
+const btnOpenAddModal = document.getElementById('btnOpenAddModal');
+const btnCloseAddModal = document.getElementById('btnCloseAddModal');
+const btnCancelAddModal = document.getElementById('btnCancelAddModal');
+const btnSubmitAddTarget = document.getElementById('btnSubmitAddTarget');
+const newTargetUrl = document.getElementById('newTargetUrl');
+const newTargetName = document.getElementById('newTargetName');
+const newTargetThreshold = document.getElementById('newTargetThreshold');
+
+// Play alert sound on trigger
 function playAlertChime() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(659.25, ctx.currentTime); // E5
-    osc.frequency.setValueAtTime(880.00, ctx.currentTime + 0.1); // A5
+    osc.frequency.setValueAtTime(659.25, ctx.currentTime);
+    osc.frequency.setValueAtTime(880.00, ctx.currentTime + 0.1);
     gain.gain.setValueAtTime(0.2, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
     osc.connect(gain);
@@ -64,7 +83,7 @@ function initWebSocket() {
   ws = new WebSocket(wsUrl);
 
   ws.onopen = () => {
-    appendLog('SYSTEM', 'Connected to Cost Collapser Sentinel Engine');
+    appendLog('SYSTEM', 'Connected to Cost Collapser Real-Time Sentinel');
   };
 
   ws.onmessage = (event) => {
@@ -87,6 +106,8 @@ function handleWsMessage(data) {
       state.status = data.status;
       state.pendingGates = data.pendingGates || [];
       state.auditLog = data.auditLog || [];
+      state.adapters = data.adapters || [];
+      updateAdaptersDropdown(state.adapters, data.status.activeAdapterId);
       updateMetricsUI(data.status.metrics);
       renderPendingGates();
       renderAuditLog();
@@ -111,26 +132,49 @@ function handleWsMessage(data) {
       renderPendingGates();
       renderAuditLog();
       break;
+
+    case 'ADAPTER_REGISTERED':
+      state.adapters = data.adapters;
+      updateAdaptersDropdown(state.adapters, data.adapter.id);
+      break;
   }
+}
+
+function updateAdaptersDropdown(adapters, activeId) {
+  if (!adapters) return;
+  targetSelector.innerHTML = adapters.map(a => `
+    <option value="${a.id}" ${a.id === activeId ? 'selected' : ''}>
+      ${a.name}
+    </option>
+  `).join('');
 }
 
 function handleSentinelCheck(entry, metrics) {
   updateMetricsUI(metrics);
 
-  targetCurrentPrice.textContent = `$${entry.price.toFixed(2)}`;
-  sliderPriceDisplay.textContent = `$${entry.price.toFixed(2)}`;
-  priceSlider.value = entry.price;
+  const curr = entry.currency || '$';
+  targetCurrentPrice.textContent = `${curr}${entry.price.toFixed(2)}`;
+  targetTitle.textContent = entry.item || 'Live Web Target';
+  targetVendor.textContent = `Vendor: ${entry.vendor || 'Live Web Supplier'}`;
+  targetLatency.textContent = `${entry.latencyMs}ms`;
+
+  const adapter = state.adapters.find(a => a.id === entry.adapterId);
+  if (adapter) {
+    targetExternalLink.href = adapter.url;
+    targetThresholdDisplay.textContent = `${curr}${adapter.threshold.toFixed(2)}`;
+    thresholdValueBadge.textContent = `${curr}${adapter.threshold.toFixed(2)}`;
+  }
 
   targetStockStatus.textContent = entry.inStock ? 'In Stock' : 'Out of Stock';
-  targetStockStatus.className = `price-box-val ${entry.inStock ? 'text-green' : 'text-danger'}`;
+  targetStockStatus.className = `stat-val ${entry.inStock ? 'text-green' : 'text-danger'}`;
 
   const time = new Date().toLocaleTimeString();
-  const alertTag = entry.triggered ? '<span class="log-alert">[PRICE ALERT &le; $50]</span>' : '';
+  const alertTag = entry.triggered ? '<span class="log-alert">[THRESHOLD REACHED]</span>' : '';
   const logHtml = `
     <div class="log-line">
       <span class="log-time">[${time}]</span>
       <span>${entry.adapterId}</span>
-      <span style="color:#fff; font-weight:600;">$${entry.price.toFixed(2)}</span>
+      <span style="color:#fff; font-weight:600;">${curr}${entry.price.toFixed(2)}</span>
       <span class="log-green">(0 tokens &bull; ${entry.latencyMs}ms)</span>
       ${alertTag}
     </div>
@@ -143,13 +187,13 @@ function handleWakeUpAlert(alertData, metrics) {
   updateMetricsUI(metrics);
 
   wakeUpAlertContainer.style.display = 'block';
-  alertSummaryText.textContent = alertData.analysis?.executiveSummary || 'Target price threshold breached! AI Agent prepared purchase briefing.';
+  alertSummaryText.textContent = alertData.wakeEvent?.analysis?.executiveSummary || 'Target threshold crossed! AI Agent formulated procurement briefing.';
 
   const logHtml = `
     <div class="log-line" style="background: rgba(245, 158, 11, 0.15); padding: 4px; border-radius: 4px;">
       <span class="log-time">[${new Date().toLocaleTimeString()}]</span>
       <span class="log-alert">🚨 AI AWAKENED:</span>
-      <span>Recommendation: ${alertData.analysis?.recommendation} (Tokens: ${alertData.tokensBurned})</span>
+      <span>Recommendation: ${alertData.wakeEvent?.analysis?.recommendation || 'BUY'}</span>
     </div>
   `;
   appendLogHtml(logHtml);
@@ -160,7 +204,7 @@ function updateMetricsUI(metrics) {
   state.metrics = metrics;
 
   kpiDollarsSaved.textContent = `$${metrics.savings.dollarsSaved.toFixed(2)}`;
-  kpiEfficiency.textContent = `${metrics.savings.efficiencyPercent}% Token Cost Reduction`;
+  kpiEfficiency.textContent = `${metrics.savings.efficiencyPercent}% LLM Cost Reduction`;
   kpiChecksCount.innerHTML = `${metrics.totalChecks} <span class="metric-unit">CHECKS</span>`;
   kpiTraditionalTokens.textContent = `Traditional LLM burn: ${metrics.traditional.tokensBurned.toLocaleString()} tokens`;
 }
@@ -174,12 +218,9 @@ function renderPendingGates() {
         <div class="empty-icon">🛡️</div>
         <div class="empty-title">Cost Collapser Standing By</div>
         <div class="empty-subtitle">
-          Monitoring target site with <strong>0 tokens</strong>.<br>
-          When a price drops below $50.00, the AI agent will analyze the deal and request human approval here.
+          Monitoring live web targets at <strong>0 tokens ($0.00)</strong>.<br>
+          When a price triggers your threshold, the AI agent will formulate a purchase order recommendation here for your approval.
         </div>
-        <button class="btn btn-primary" style="margin-top: 16px;" onclick="triggerFlashDrop()">
-          📉 Test Price Drop Alert ($39.99)
-        </button>
       </div>
     `;
     return;
@@ -189,6 +230,7 @@ function renderPendingGates() {
     const trigger = gate.data.trigger;
     const analysis = gate.data.analysis;
     const fin = analysis.financialImpact || {};
+    const curr = trigger.currency || '$';
 
     return `
       <div class="gate-item-card">
@@ -202,13 +244,13 @@ function renderPendingGates() {
             <div class="gate-item-title">${trigger.item}</div>
             <div style="font-size: 11px; color: var(--text-muted);">Vendor: ${trigger.vendor}</div>
           </div>
-          <div class="gate-item-price">$${trigger.currentPrice.toFixed(2)}</div>
+          <div class="gate-item-price">${curr}${trigger.currentPrice.toFixed(2)}</div>
         </div>
 
         <div class="gate-summary-box">
           ${analysis.executiveSummary}
           <div style="margin-top: 6px; font-weight: 600; color: var(--green);">
-            Estimated Batch 25 Savings: ${fin.batch25LotSavings || '$2,250.00'}
+            Estimated Batch Lot Savings: ${fin.batch25LotSavings || '$2,250.00'}
           </div>
         </div>
 
@@ -238,13 +280,14 @@ function renderAuditLog() {
   auditTableBody.innerHTML = state.auditLog.map(gate => {
     const isApproved = gate.status === 'APPROVED';
     const poNumber = gate.executionResult?.poNumber || 'N/A';
+    const curr = gate.data?.trigger?.currency || '$';
 
     return `
       <tr>
         <td><code>${gate.gateId}</code></td>
         <td>${new Date(gate.decidedAt || gate.createdAt).toLocaleTimeString()}</td>
         <td>${gate.data?.trigger?.item || 'Item'}</td>
-        <td style="font-family: var(--font-mono); font-weight:700;">$${(gate.data?.trigger?.currentPrice || 0).toFixed(2)}</td>
+        <td style="font-family: var(--font-mono); font-weight:700;">${curr}${(gate.data?.trigger?.currentPrice || 0).toFixed(2)}</td>
         <td style="font-weight:700; color: ${isApproved ? 'var(--green)' : 'var(--red)'};">${gate.status}</td>
         <td>${gate.decidedBy || 'Operator'}</td>
         <td>${isApproved ? `<code style="color:var(--cyan);">${poNumber}</code>` : '<span class="text-muted">Dismissed</span>'}</td>
@@ -288,47 +331,144 @@ async function rejectGate(gateId) {
   }
 }
 
-// Trigger Price Drop
-async function triggerFlashDrop() {
+// Target Selection Change
+targetSelector.addEventListener('change', async (e) => {
+  const selectedId = e.target.value;
   try {
-    const res = await fetch('/api/demo/trigger-drop', { method: 'POST' });
-    const data = await res.json();
-    if (data.success) {
-      appendLog('PRICE-DROP', 'Target site price dropped to $39.99! Triggering AI analysis...');
-    }
-  } catch (err) {
-    alert('Failed to drop price: ' + err.message);
-  }
-}
-
-// Reset Baseline
-async function resetBaseline() {
-  try {
-    const res = await fetch('/api/demo/reset', { method: 'POST' });
-    const data = await res.json();
-    if (data.success) {
-      appendLog('SYSTEM', 'Reset price to $129.99 baseline.');
-      wakeUpAlertContainer.style.display = 'none';
-      state.pendingGates = [];
-      renderPendingGates();
-    }
-  } catch (err) {
-    alert('Failed to reset: ' + err.message);
-  }
-}
-
-// Slider Price Update
-async function setSimPrice(newPrice) {
-  try {
-    await fetch('/api/products/titan-carbide-drill-5000/update', {
+    const res = await fetch('/api/monitor/select-adapter', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ price: parseFloat(newPrice) })
+      body: JSON.stringify({ adapterId: selectedId })
     });
+    const data = await res.json();
+    if (data.success) {
+      appendLog('TARGET', `Switched monitoring target to: ${selectedId}`);
+      if (data.adapter) {
+        thresholdInput.value = data.adapter.threshold;
+        thresholdValueBadge.textContent = `$${data.adapter.threshold.toFixed(2)}`;
+      }
+    }
   } catch (err) {
-    console.error('Failed to set price:', err);
+    alert('Failed to switch target: ' + err.message);
   }
-}
+});
+
+// Update Threshold
+btnUpdateThreshold.addEventListener('click', async () => {
+  const val = parseFloat(thresholdInput.value);
+  if (isNaN(val) || val <= 0) return alert('Please enter a valid price threshold.');
+
+  const selectedId = targetSelector.value;
+  try {
+    const res = await fetch('/api/target/threshold', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adapterId: selectedId, threshold: val })
+    });
+    const data = await res.json();
+    if (data.success) {
+      thresholdValueBadge.textContent = `$${val.toFixed(2)}`;
+      targetThresholdDisplay.textContent = `$${val.toFixed(2)}`;
+      appendLog('CONFIG', `Updated alert threshold to $${val.toFixed(2)} for ${selectedId}`);
+    }
+  } catch (err) {
+    alert('Failed to update threshold: ' + err.message);
+  }
+});
+
+// Quick Trigger: Set threshold above current price to test real alert
+btnSetThresholdTrigger.addEventListener('click', () => {
+  const currentPriceText = targetCurrentPrice.textContent.replace(/[^0-9.]/g, '');
+  const currentVal = parseFloat(currentPriceText) || 50.0;
+  const triggerVal = currentVal + 5.00;
+  thresholdInput.value = triggerVal.toFixed(2);
+  btnUpdateThreshold.click();
+});
+
+// Reset Threshold below current price
+btnResetThreshold.addEventListener('click', () => {
+  const currentPriceText = targetCurrentPrice.textContent.replace(/[^0-9.]/g, '');
+  const currentVal = parseFloat(currentPriceText) || 50.0;
+  const resetVal = Math.max(1.0, currentVal - 10.00);
+  thresholdInput.value = resetVal.toFixed(2);
+  btnUpdateThreshold.click();
+});
+
+// Webhook Test Sender
+btnSendTestWebhook.addEventListener('click', async () => {
+  const url = webhookUrlInput.value.trim();
+  if (!url) return alert('Please paste your Discord or Slack Webhook URL.');
+
+  btnSendTestWebhook.disabled = true;
+  btnSendTestWebhook.textContent = 'Sending...';
+
+  try {
+    const res = await fetch('/api/webhook/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        webhookUrl: url,
+        message: '⚡ [Cost Collapser] Real-Time Alert: Price threshold reached on live web target!',
+        details: {
+          item: targetTitle.textContent,
+          price: targetCurrentPrice.textContent,
+          summary: 'Live web price crossed alert threshold. Formulation completed with 0 polling tokens.'
+        }
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      alert('✅ Webhook sent successfully! Check your Discord / Slack channel.');
+      appendLog('WEBHOOK', `Dispatched real-time alert webhook to endpoint.`);
+    } else {
+      alert('Webhook error: ' + data.error);
+    }
+  } catch (err) {
+    alert('Failed to send webhook: ' + err.message);
+  } finally {
+    btnSendTestWebhook.disabled = false;
+    btnSendTestWebhook.textContent = 'Send Webhook';
+  }
+});
+
+// Custom Target Modal
+btnOpenAddModal.addEventListener('click', () => addModal.style.display = 'flex');
+btnCloseAddModal.addEventListener('click', () => addModal.style.display = 'none');
+btnCancelAddModal.addEventListener('click', () => addModal.style.display = 'none');
+
+btnSubmitAddTarget.addEventListener('click', async () => {
+  const url = newTargetUrl.value.trim();
+  const name = newTargetName.value.trim();
+  const threshold = parseFloat(newTargetThreshold.value);
+
+  if (!url) return alert('Please enter a valid website URL.');
+  if (isNaN(threshold) || threshold <= 0) return alert('Please enter a valid threshold.');
+
+  btnSubmitAddTarget.disabled = true;
+  btnSubmitAddTarget.textContent = 'Analyzing & Registering...';
+
+  try {
+    const res = await fetch('/api/adapters/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, name, threshold })
+    });
+    const data = await res.json();
+    if (data.success) {
+      addModal.style.display = 'none';
+      newTargetUrl.value = '';
+      newTargetName.value = '';
+      appendLog('TARGET', `Registered and started monitoring new live URL: ${url}`);
+    } else {
+      alert('Failed to register target: ' + data.error);
+    }
+  } catch (err) {
+    alert('Error registering target: ' + err.message);
+  } finally {
+    btnSubmitAddTarget.disabled = false;
+    btnSubmitAddTarget.textContent = 'Add & Start Monitoring';
+  }
+});
 
 // AI Agent Chat
 async function sendAgentPrompt(promptText) {
@@ -346,7 +486,7 @@ async function sendAgentPrompt(promptText) {
   const typingHtml = `
     <div class="chat-bubble ai-bubble" id="${typingId}">
       <div class="bubble-sender">🤖 Cost Collapser AI</div>
-      <div style="color: var(--cyan);">Analyzing request & executing tools...</div>
+      <div style="color: var(--cyan);">Analyzing live data & executing tools...</div>
     </div>
   `;
   agentMessagesContainer.insertAdjacentHTML('beforeend', typingHtml);
@@ -418,20 +558,8 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   });
 });
 
-// Event Listeners
-btnTriggerDrop.addEventListener('click', triggerFlashDrop);
-btnResetBaseline.addEventListener('click', resetBaseline);
-
 btnClearLogs.addEventListener('click', () => {
   terminalLogs.innerHTML = '';
-});
-
-priceSlider.addEventListener('input', (e) => {
-  sliderPriceDisplay.textContent = `$${parseFloat(e.target.value).toFixed(2)}`;
-});
-
-priceSlider.addEventListener('change', (e) => {
-  setSimPrice(e.target.value);
 });
 
 if (agentInputForm) {
@@ -446,11 +574,8 @@ if (agentInputForm) {
 }
 
 // Expose globals for inline HTML onclick handlers
-window.triggerFlashDrop = triggerFlashDrop;
-window.setSimPrice = setSimPrice;
 window.approveGate = approveGate;
 window.rejectGate = rejectGate;
-window.sendAgentPrompt = sendAgentPrompt;
 
 // Initialize
 initWebSocket();
