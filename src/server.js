@@ -301,14 +301,15 @@ app.post('/api/demo/reset', (req, res) => {
 const PORT = CONFIG.PORT;
 server.listen(PORT, () => {
   console.log(`\n======================================================`);
-  console.log(`⚡ ZERO-TOKEN SENTINEL (COST COLLAPSER) ACTIVE`);
-  console.log(`📡 Command Center Dashboard: http://localhost:${PORT}`);
-  console.log(`🏪 Mock Industrial Supplier: http://localhost:${PORT}/products/titan-carbide-drill-5000`);
+  console.log(`⚡ COST COLLAPSER AI ENGINE ACTIVE`);
+  console.log(`📡 Dashboard: http://localhost:${PORT}`);
+  console.log(`🏪 Monitored Store: http://localhost:${PORT}/products/titan-carbide-drill-5000`);
   console.log(`======================================================\n`);
 
   // Start the background monitoring loop automatically
   sentinelMonitor.start('apex-industrial', CONFIG.POLL_INTERVAL_SEC);
 });
+
 
 // Also create separate port 4100 listener if desired
 const mockApp = express();

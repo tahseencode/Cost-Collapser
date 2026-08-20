@@ -169,18 +169,18 @@ storeRouter.get('/products/:id', (req, res) => {
     </div>
   </div>
 
-  <!-- Live Demo / Presentation Trigger Box -->
+  <!-- Live Store Price Controller Drawer -->
   <div class="demo-controller">
     <div class="demo-title">
-      <span>⚡ Hackathon Live Demo Controls (Manipulate Target DOM Live)</span>
-      <span style="font-size:12px; color:#8b949e;">Threshold: $${product.targetThreshold.toFixed(2)}</span>
+      <span>⚡ Live Store Price Controller (Adjust Catalog Price)</span>
+      <span style="font-size:12px; color:#8b949e;">Alert Threshold: $${product.targetThreshold.toFixed(2)}</span>
     </div>
     <div class="btn-group">
       <button class="btn btn-drop" onclick="updatePrice(39.99)">
-        🚨 Trigger Flash Price Drop ($39.99 - Below Threshold!)
+        📉 Set Price to $39.99 (Triggers Alert)
       </button>
       <button class="btn btn-drop" style="background:#ffa502;" onclick="updatePrice(45.50)">
-        📉 Set to $45.50 (Trigger Threshold)
+        🏷️ Set Price to $45.50
       </button>
       <button class="btn btn-reset" onclick="resetPrice()">
         🔄 Reset to Standard ($${product.initialPrice.toFixed(2)})
@@ -192,6 +192,7 @@ storeRouter.get('/products/:id', (req, res) => {
       </div>
     </div>
   </div>
+
 
   <script>
     async function updatePrice(newPrice) {

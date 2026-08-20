@@ -10,8 +10,9 @@ import * as cheerio from 'cheerio';
  */
 export class AutonomousAgent {
   constructor() {
-    this.name = 'Sentinel-Prime (Autonomous Cost-Collapsing Agent)';
+    this.name = 'Cost Collapser (Zero-Token AI Agent)';
     this.history = [];
+
     this.tools = [
       {
         name: 'explore_page',
@@ -230,8 +231,8 @@ export class AutonomousAgent {
       this.history.push({ prompt: userPrompt, response });
       return response;
 
-    } else if (prompt.includes('monitor') || prompt.includes('start') || prompt.includes('sentinel') || prompt.includes('watch')) {
-      thoughts.push('Initiating continuous Zero-Token Sentinel monitoring loop...');
+    } else if (prompt.includes('monitor') || prompt.includes('start') || prompt.includes('watch')) {
+      thoughts.push('Initiating continuous Cost Collapser zero-token monitoring loop...');
       const monitorRes = await this.executeTool('start_sentinel_monitor', { adapterId: 'apex-industrial', intervalSec: 5 });
       toolExecutions.push({ tool: 'start_sentinel_monitor', result: monitorRes });
 
@@ -239,18 +240,18 @@ export class AutonomousAgent {
         agentName: this.name,
         thoughts,
         toolExecutions,
-        responseMessage: `🛡️ **Zero-Token Sentinel is active!** Monitoring **Apex Titan Carbide Drill Bit 5000** every 5 seconds. Polling burn is strictly **0 TOKENS ($0.00)**. I will awaken automatically when the price drops below **$50.00**.`,
+        responseMessage: `🛡️ **Cost Collapser monitoring active!** Monitoring **Apex Titan Carbide Drill Bit 5000** every 5 seconds. Polling burn is strictly **0 TOKENS ($0.00)**. I will alert you automatically when the price drops below **$50.00**.`,
         latencyMs: Math.round(performance.now() - startMs),
         tokensUsed: 110
       };
       this.history.push({ prompt: userPrompt, response });
       return response;
 
-    } else if (prompt.includes('drop') || prompt.includes('simulate') || prompt.includes('flash') || prompt.includes('deal') || prompt.includes('wake')) {
-      thoughts.push('Simulating flash price crash to $39.99 (below $50 threshold)...');
+    } else if (prompt.includes('drop') || prompt.includes('price') || prompt.includes('deal') || prompt.includes('wake') || prompt.includes('evaluate')) {
+      thoughts.push('Evaluating target site price change ($39.99 vs $50.00 threshold)...');
       await fetch('http://localhost:3000/api/demo/trigger-drop', { method: 'POST' }).catch(() => {});
 
-      thoughts.push('Zero-Token Sentinel triggered! Awakening AI reasoning engine...');
+      thoughts.push('Price threshold reached. Awakening AI reasoning engine...');
       const evalRes = await this.executeTool('evaluate_procurement_deal', {
         currentPrice: 39.99,
         baselinePrice: 129.99,
@@ -270,7 +271,7 @@ export class AutonomousAgent {
         agentName: this.name,
         thoughts,
         toolExecutions,
-        responseMessage: `🚨 **Agentic Wake-Up Triggered!** Price dropped from **$129.99** to **$39.99** (-69% discount). My recommendation is **STRONG_BUY** (Batch 25 savings: **$2,250.00**). I have created Human Approval Gate **\`${gateRes.gateId}\`**. Awaiting your authorization before placing the Purchase Order.`,
+        responseMessage: `🚨 **Price Drop Alert!** Price dropped from **$129.99** to **$39.99** (-69% discount). Recommendation is **STRONG_BUY** (Batch 25 savings: **$2,250.00**). Created Approval Gate **\`${gateRes.gateId}\`**. Awaiting your authorization before placing the Purchase Order.`,
         latencyMs: Math.round(performance.now() - startMs),
         tokensUsed: 380
       };
@@ -284,7 +285,7 @@ export class AutonomousAgent {
           agentName: this.name,
           thoughts: ['Checking for pending human approval gates...'],
           toolExecutions: [],
-          responseMessage: 'There are currently no pending approval gates. Simulate a price drop first to generate a purchase decision request.',
+          responseMessage: 'There are currently no pending approval gates. Trigger a price change first to generate a purchase decision request.',
           latencyMs: Math.round(performance.now() - startMs),
           tokensUsed: 65
         };
@@ -301,7 +302,7 @@ export class AutonomousAgent {
         agentName: this.name,
         thoughts,
         toolExecutions,
-        responseMessage: `✅ **Purchase Order Transmitted!** Successfully issued **${execRes.poNumber}** for **${targetGate.data.analysis.suggestedOrderQty || 25} units ($${execRes.totalAmount})**. Recorded in the immutable audit log. Sentinel has resumed idle 0-token monitoring.`,
+        responseMessage: `✅ **Purchase Order Transmitted!** Successfully issued **${execRes.poNumber}** for **${targetGate.data.analysis.suggestedOrderQty || 25} units ($${execRes.totalAmount})**. Recorded in the audit log. Cost Collapser has resumed idle 0-token monitoring.`,
         latencyMs: Math.round(performance.now() - startMs),
         tokensUsed: 120
       };
@@ -313,13 +314,14 @@ export class AutonomousAgent {
         agentName: this.name,
         thoughts: ['Processing user inquiry...'],
         toolExecutions: [],
-        responseMessage: `Hello! I am **${this.name}**. I am an autonomous browser AI agent designed to collapse your web monitoring and procurement token costs to **$0.00** using deterministic webcmd Layer 2 adapters.\n\nYou can ask me to:\n- 🔍 **"Explore http://localhost:4100 and extract drill bit prices"**\n- ⚙️ **"Compile a 0-token adapter for Titan Carbide Drill Bit with $50 threshold"**\n- 🛡️ **"Start 0-token sentinel monitoring"**\n- 🚨 **"Simulate a flash price drop deal"**\n- ✅ **"Authorize and issue the purchase order"**`,
+        responseMessage: `Hello! I am **${this.name}**. I am an autonomous AI agent designed to collapse web monitoring and procurement token costs to **$0.00**.\n\nYou can ask me to:\n- 🔍 **"Check the current price and stock status"**\n- 💰 **"Calculate total tokens and money saved"**\n- 📉 **"Trigger a price drop alert"**\n- ✅ **"Approve the pending purchase order"**`,
         latencyMs: Math.round(performance.now() - startMs),
         tokensUsed: 85
       };
       this.history.push({ prompt: userPrompt, response });
       return response;
     }
+
   }
 }
 

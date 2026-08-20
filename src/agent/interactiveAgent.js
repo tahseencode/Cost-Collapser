@@ -5,18 +5,18 @@ import { autonomousAgent } from './autonomousAgent.js';
 
 console.log(chalk.bold.cyan(`
 ╔════════════════════════════════════════════════════════════════════╗
-║   🤖 SENTINEL-PRIME: AUTONOMOUS COST-COLLAPSING AI AGENT          ║
-║   Webcmd Layer 0 Exploration ➔ Layer 2 Deterministic 0-Token Loop   ║
+║   🤖 COST COLLAPSER: ZERO-TOKEN AI PROCUREMENT AGENT              ║
+║   Autonomous Web Monitoring & Decision Engine (0 Tokens)          ║
 ╚════════════════════════════════════════════════════════════════════╝
 `));
 
 console.log(chalk.gray(`Try prompts like:`));
-console.log(chalk.yellow(`  • "Explore the target store and find drill bit prices"`));
-console.log(chalk.yellow(`  • "Compile this into a 0-token adapter with $50 threshold"`));
-console.log(chalk.yellow(`  • "Start 0-token sentinel monitoring"`));
-console.log(chalk.yellow(`  • "Simulate flash price drop below threshold"`));
+console.log(chalk.yellow(`  • "What is the current price and stock status?"`));
+console.log(chalk.yellow(`  • "How much money and tokens have we saved?"`));
+console.log(chalk.yellow(`  • "Trigger a price drop alert to $39.99"`));
 console.log(chalk.yellow(`  • "Approve the pending purchase order"`));
 console.log(chalk.gray(`Type "exit" to quit.\n`));
+
 
 const rl = readline.createInterface({
   input: process.stdin,
