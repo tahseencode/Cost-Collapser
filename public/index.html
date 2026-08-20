@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zero-Token Sentinel | Autonomous Cost-Collapsing AI Procurement</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Top Navigation & Global Header -->
+  <header class="top-nav">
+    <div class="brand-cluster">
+      <div class="logo-shield">
+        <span class="pulse-ring"></span>
+        ⚡
+      </div>
+      <div>
+        <div class="brand-title">
+          ZERO-TOKEN SENTINEL
+          <span class="badge-tag live-badge">LIVE ENGINE</span>
+          <span class="badge-tag cost-badge">100% COST COLLAPSED</span>
+        </div>
+        <div class="brand-subtitle">Autonomous Webcmd Layer 2 Deterministic Polling with Agentic Wake-Up & Human Gate</div>
+      </div>
+    </div>
+
+    <!-- Quick Hackathon Presentation Bar -->
+    <div class="demo-quick-bar">
+      <button class="btn btn-danger btn-glow" id="btnTriggerDrop" title="Drops the target price below $50 to instantly wake up the AI agent">
+        🚨 Simulate Flash Drop ($39.99)
+      </button>
+      <button class="btn btn-secondary" id="btnResetDemo" title="Resets mock store and cost metrics">
+        🔄 Reset Baseline
+      </button>
+      <button class="btn btn-primary" id="btnManualCheck">
+        ⚡ Check Now
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Split-Screen Container -->
+  <main class="split-container">
+    
+    <!-- LEFT PANE: Sentinel Live Engine & Cost Collapse Telemetry -->
+    <section class="pane left-pane">
+      
+      <!-- Real-Time Cost Collapse KPI Cards -->
+      <div class="kpi-grid">
+        <div class="kpi-card zero-token-card">
+          <div class="kpi-header">
+            <span class="kpi-label">SENTINEL POLLING BURN</span>
+            <span class="kpi-icon">🛡️</span>
+          </div>
+          <div class="kpi-val text-neon-green">0 <span class="kpi-unit">TOKENS</span></div>
+          <div class="kpi-sub">$0.000000 / polling check</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-label">TRADITIONAL AGENT BURN</span>
+            <span class="kpi-icon">🔥</span>
+          </div>
+          <div class="kpi-val text-danger" id="kpiTraditionalTokens">0 <span class="kpi-unit">TOK</span></div>
+          <div class="kpi-sub" id="kpiTraditionalCost">Estimated Cost: $0.00</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-label">CUMULATIVE DOLLARS SAVED</span>
+            <span class="kpi-icon">💰</span>
+          </div>
+          <div class="kpi-val text-neon-cyan" id="kpiDollarsSaved">$0.00</div>
+          <div class="kpi-sub" id="kpiEfficiency">100% Cost Efficiency</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-label">TOTAL CHECKS & LATENCY</span>
+            <span class="kpi-icon">⚡</span>
+          </div>
+          <div class="kpi-val text-amber" id="kpiChecksCount">0 <span class="kpi-unit">PINGS</span></div>
+          <div class="kpi-sub" id="kpiAvgLatency">Avg Latency: ~14ms</div>
+        </div>
+      </div>
+
+      <!-- Active Target Card & Live Sparkline Graph -->
+      <div class="glass-panel target-monitor-card">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="status-dot pulsing"></span>
+            ACTIVE SENTINEL TARGET: <span id="activeTargetName">Apex Titan Carbide Drill Bit 5000</span>
+          </div>
+          <div class="target-controls">
+            <label class="control-label">Interval:</label>
+            <select id="selectInterval" class="custom-select">
+              <option value="3">3s (Turbo)</option>
+              <option value="5" selected>5s (Demo)</option>
+              <option value="10">10s (Standard)</option>
+              <option value="30">30s</option>
+              <option value="60">60s (Prod)</option>
+            </select>
+            <button class="btn btn-icon" id="btnToggleMonitor" title="Pause / Resume Sentinel">⏸️</button>
+          </div>
+        </div>
+
+        <div class="target-stats-row">
+          <div class="stat-pill">
+            <span class="stat-name">Current Price:</span>
+            <span class="stat-val" id="targetCurrentPrice">$129.99</span>
+          </div>
+          <div class="stat-pill">
+            <span class="stat-name">Threshold:</span>
+            <span class="stat-val text-amber" id="targetThresholdPrice">&le; $50.00</span>
+          </div>
+          <div class="stat-pill">
+            <span class="stat-name">Stock Status:</span>
+            <span class="stat-val text-neon-green" id="targetStockStatus">● In Stock</span>
+          </div>
+          <div class="stat-pill">
+            <span class="stat-name">Engine:</span>
+            <span class="stat-val">Layer 2 Webcmd</span>
+          </div>
+        </div>
+
+        <!-- Real-Time Price vs Threshold Visualizer Bar -->
+        <div class="price-gauge-container">
+          <div class="gauge-labels">
+            <span>$0.00</span>
+            <span class="gauge-threshold-label">🚨 Target Threshold: $50.00</span>
+            <span>$250.00</span>
+          </div>
+          <div class="gauge-bar-bg">
+            <div class="gauge-threshold-marker" style="left: 20%;"></div>
+            <div class="gauge-current-indicator" id="gaugeCurrent" style="left: 52%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Sentinel Terminal Output (Zero-Token Stream) -->
+      <div class="glass-panel terminal-panel">
+        <div class="panel-header terminal-header">
+          <div class="panel-title font-mono">
+            <span class="terminal-dots"><span></span><span></span><span></span></span>
+            SENTINEL ZERO-TOKEN LOG STREAM
+          </div>
+          <div class="terminal-actions">
+            <span class="font-mono text-neon-green" style="font-size: 11px;">● 0 TOKENS / REQ</span>
+            <button class="btn-clear-term" id="btnClearLogs" title="Clear Terminal">Clear</button>
+          </div>
+        </div>
+        <div class="terminal-body font-mono" id="terminalLogs">
+          <!-- Live log lines stream here -->
+        </div>
+      </div>
+
+      <!-- Projected Cost Comparison Card -->
+      <div class="glass-panel projections-card">
+        <div class="projections-header">
+          <span class="font-bold">📉 ANNUAL RUN-RATE COST COMPARISON (24/7 Monitoring)</span>
+        </div>
+        <div class="comparison-bars">
+          <div class="comp-row">
+            <span class="comp-name">Traditional Agent Polling (GPT-4o / Claude 3.5):</span>
+            <div class="bar-outer">
+              <div class="bar-fill bar-traditional" style="width: 100%;"></div>
+            </div>
+            <span class="comp-cost text-danger" id="projTraditional">$1,058.40 / mo</span>
+          </div>
+          <div class="comp-row">
+            <span class="comp-name">Zero-Token Sentinel Architecture:</span>
+            <div class="bar-outer">
+              <div class="bar-fill bar-sentinel" style="width: 0.8%;"></div>
+            </div>
+            <span class="comp-cost text-neon-green" id="projSentinel">$0.14 / mo</span>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+
+    <!-- RIGHT PANE: Target Simulation, Agentic Wake-Up & Human Approval Gate -->
+    <section class="pane right-pane">
+
+      <!-- TABS NAVIGATION -->
+      <div class="tab-nav">
+        <button class="tab-btn active" data-tab="tab-approval">
+          🔒 Human Approval Gate 
+          <span class="pending-pill" id="pendingGateBadge">0</span>
+        </button>
+        <button class="tab-btn" data-tab="tab-store">
+          🏪 Live Target Store Simulator
+        </button>
+        <button class="tab-btn" data-tab="tab-compiler">
+          ⚙️ Adapter Compiler Studio
+        </button>
+        <button class="tab-btn" data-tab="tab-audit">
+          📜 Execution Audit Log
+        </button>
+      </div>
+
+      <!-- TAB 1: HUMAN APPROVAL GATE & AGENTIC WAKE-UP -->
+      <div class="tab-content active" id="tab-approval">
+        
+        <!-- Live Alert Banner when Trigger Fires -->
+        <div class="alert-box" id="wakeUpAlertContainer" style="display: none;">
+          <div class="alert-header">
+            <div class="alert-title">
+              <span class="pulse-dot-red"></span>
+              🚨 AGENTIC WAKE-UP TRIGGERED: PRICE TARGET BREACHED!
+            </div>
+            <div class="alert-time" id="alertTimestamp">Just now</div>
+          </div>
+          <div class="alert-summary" id="alertSummaryText">
+            The Zero-Token Sentinel has awakened the AI Agent. Review strategic procurement briefing below.
+          </div>
+        </div>
+
+        <!-- Pending Approval Gate Card -->
+        <div id="pendingGateList">
+          <div class="empty-gate-state" id="emptyGateState">
+            <div class="empty-icon">🛡️</div>
+            <div class="empty-title">Zero-Token Sentinel Standing Guard</div>
+            <div class="empty-desc">
+              Monitoring target site deterministically with <strong>0 LLM reasoning tokens</strong>.<br>
+              When a price drops below threshold, the AI agent will awaken and request human approval here.
+            </div>
+            <button class="btn btn-danger btn-pulse" style="margin-top: 16px;" onclick="triggerFlashDrop()">
+              ⚡ Click to Simulate Instant Price Drop Deal
+            </button>
+          </div>
+        </div>
+
+        <!-- Resolved Gate Recent Receipts -->
+        <div class="recent-po-section" id="recentPoSection" style="display:none; margin-top: 24px;">
+          <div class="section-title">
+            <span>📦 Executed Purchase Orders (Autonomous ERP Dispatch)</span>
+          </div>
+          <div id="recentPoList"></div>
+        </div>
+      </div>
+
+
+      <!-- TAB 2: LIVE TARGET STORE SIMULATOR -->
+      <div class="tab-content" id="tab-store">
+        <div class="glass-panel store-sim-panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              ⚙️ APEX INDUSTRIAL SUPPLY - MOCK TARGET DOM
+            </div>
+            <a href="http://localhost:4100/products/titan-carbide-drill-5000" target="_blank" class="link-external">
+              Open Full Store ↗
+            </a>
+          </div>
+
+          <div class="store-interactive-card">
+            <div class="store-item-banner">
+              <div class="store-thumb">🔩</div>
+              <div class="store-info">
+                <div class="store-tag">HEAVY INDUSTRIAL MRO</div>
+                <div class="store-title" id="simProductTitle">Apex Titan Carbide Drill Bit 5000 (Industrial Grade)</div>
+                <div class="store-sku">SKU: <code id="simProductSku">APX-TCB-5000</code> | Vendor: Apex Industrial Corp</div>
+              </div>
+            </div>
+
+            <!-- Price Controller Box -->
+            <div class="price-slider-box">
+              <div class="price-slider-header">
+                <span>Current Catalog Price:</span>
+                <span class="price-highlight" id="simCurrentPriceDisplay">$129.99</span>
+              </div>
+              <input type="range" id="priceSlider" min="20" max="200" step="0.5" value="129.99" class="range-slider">
+              <div class="slider-ticks">
+                <span class="text-neon-green font-bold">$20 (Deep Discount)</span>
+                <span class="text-amber font-bold">🎯 $50 (Threshold)</span>
+                <span>$200 (MSRP)</span>
+              </div>
+            </div>
+
+            <!-- Quick Simulation Actions -->
+            <div class="sim-actions-grid">
+              <button class="btn btn-sim btn-danger" onclick="setSimPrice(39.99)">
+                🚨 Drop to $39.99 (Triggers Alert)
+              </button>
+              <button class="btn btn-sim btn-amber" onclick="setSimPrice(48.50)">
+                📉 Drop to $48.50 (Just Below $50)
+              </button>
+              <button class="btn btn-sim btn-secondary" onclick="setSimPrice(89.00)">
+                🏷️ Normal Sale ($89.00)
+              </button>
+              <button class="btn btn-sim btn-secondary" onclick="setSimPrice(129.99)">
+                🔄 Base Price ($129.99)
+              </button>
+            </div>
+
+            <!-- Switch Target Preset -->
+            <div class="switch-target-box">
+              <label class="control-label font-bold">Select Active Target Preset:</label>
+              <select id="selectTargetPreset" class="custom-select" style="width: 100%; margin-top: 8px;">
+                <option value="apex-industrial">Apex Titan Carbide Drill Bit (Threshold: $50.00)</option>
+                <option value="grainger-catalog">Grainger HV-90 Hydraulic Valve (Threshold: $120.00)</option>
+                <option value="precision-bearings">Precision CB-70 Spindle Bearings (Threshold: $85.00)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- TAB 3: ADAPTER COMPILER STUDIO -->
+      <div class="tab-content" id="tab-compiler">
+        <div class="glass-panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              ⚙️ WEBCMD LAYER 2 ZERO-TOKEN ADAPTER COMPILER
+            </div>
+          </div>
+          <p class="text-muted" style="font-size: 13px; margin-bottom: 16px;">
+            Compile any web scraper or AI exploration path into a standalone zero-token deterministic JavaScript CLI script that executes in &lt;20ms.
+          </p>
+
+          <div class="form-group">
+            <label class="form-label">Target Adapter:</label>
+            <select id="compileAdapterSelect" class="custom-select" style="width: 100%;">
+              <option value="apex-industrial">Apex Titan Carbide Bit</option>
+              <option value="grainger-catalog">Grainger Spec Hydraulic Valve</option>
+              <option value="precision-bearings">Precision Ceramic Bearings</option>
+            </select>
+          </div>
+
+          <div style="margin: 16px 0; display: flex; gap: 12px;">
+            <button class="btn btn-primary" id="btnCompileAdapter">⚡ Compile to Standalone Zero-Token CLI</button>
+            <button class="btn btn-secondary" id="btnTestAdapter">🧪 Test Adapter Now (0 Tokens)</button>
+          </div>
+
+          <div class="code-preview-box">
+            <div class="code-header">
+              <span>COMPILED STANDALONE JAVASCRIPT CLI OUTPUT:</span>
+              <button class="btn-copy" id="btnCopyCompiled">Copy Code</button>
+            </div>
+            <pre class="code-content font-mono" id="compiledCodeOutput">// Click "Compile" above to generate standalone zero-token CLI code...</pre>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- TAB 4: AUDIT LOG -->
+      <div class="tab-content" id="tab-audit">
+        <div class="glass-panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              📜 HUMAN-IN-THE-LOOP PROCUREMENT AUDIT TRAIL
+            </div>
+          </div>
+          <div class="audit-table-wrapper">
+            <table class="audit-table">
+              <thead>
+                <tr>
+                  <th>Gate ID</th>
+                  <th>Timestamp</th>
+                  <th>Item & Vendor</th>
+                  <th>Price</th>
+                  <th>Decision</th>
+                  <th>Operator</th>
+                  <th>ERP Action</th>
+                </tr>
+              </thead>
+              <tbody id="auditTableBody">
+                <tr>
+                  <td colspan="7" class="text-center text-muted" style="padding: 24px;">No human approval records yet. Simulate a price drop to generate gate history.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Live Audio Beep for Presentation Alarm (synthesized via Web Audio API) -->
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+{
+  "name": "zero-token-sentinel",
+  "version": "1.0.0",
+  "description": "Zero-Token Sentinel: Collapsing AI Agent polling costs to $0 with deterministic webcmd adapters, agentic wake-up triggers, and human approval gates",
+  "main": "src/server.js",
+  "type": "module",
+  "bin": {
+    "zero-sentinel": "./src/sentinel/cli.js"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "monitor": "node src/sentinel/monitor.js",
+    "cli": "node src/sentinel/cli.js",
+    "demo": "node src/server.js --demo",
+    "test": "node test/test-sentinel.js"
+  },
+  "keywords": [
+    "webcmd",
+    "ai-agent",
+    "zero-token",
+    "cost-collapse",
+    "monitoring",
+    "human-in-the-loop",
+    "automation"
+  ],
+  "author": "Antigravity",
+  "license": "MIT",
+  "dependencies": {
+    "@agentrhq/webcmd": "^0.7.4",
+    "chalk": "^5.4.1",
+    "cheerio": "^1.0.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "ws": "^8.18.0"
+  }
+}
