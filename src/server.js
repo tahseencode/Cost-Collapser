@@ -200,6 +200,41 @@ app.post('/api/adapters/register', async (req, res) => {
   }
 });
 
+app.post('/api/adapters/delete', (req, res) => {
+  try {
+    const { adapterId } = req.body;
+    if (!adapterId) return res.status(400).json({ success: false, error: 'adapterId is required' });
+
+    const deleted = adapterEngine.deleteAdapter(adapterId);
+    if (!deleted) return res.status(404).json({ success: false, error: 'Target not found' });
+
+    // If the deleted adapter was active, fallback to first available
+    if (sentinelMonitor.activeAdapterId === adapterId) {
+      const remaining = adapterEngine.getAllAdapters();
+      if (remaining.length > 0) {
+        sentinelMonitor.setActiveAdapter(remaining[0].id);
+        sentinelMonitor.tick();
+      }
+    }
+
+    broadcast({
+      type: 'ADAPTER_DELETED',
+      adapterId,
+      adapters: adapterEngine.getAllAdapters(),
+      activeAdapterId: sentinelMonitor.activeAdapterId
+    });
+
+    res.json({ 
+      success: true, 
+      adapters: adapterEngine.getAllAdapters(), 
+      activeAdapterId: sentinelMonitor.activeAdapterId 
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+
 // 4. Human Approval Gate API
 app.get('/api/gate/pending', (req, res) => {
   res.json({ success: true, pendingGates: approvalGate.getPendingGates() });

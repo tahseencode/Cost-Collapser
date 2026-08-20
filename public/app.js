@@ -4,12 +4,11 @@
 
 let ws = null;
 let state = {
-  status: { isRunning: true, pollIntervalSec: 5, activeAdapterId: 'live-books-attic' },
+  status: { isRunning: true, pollIntervalSec: 5, activeAdapterId: 'live-hm-onesie' },
   metrics: null,
   pendingGates: [],
   auditLog: [],
-  adapters: [],
-  currentAdapter: null
+  adapters: []
 };
 
 // UI Elements
@@ -19,6 +18,7 @@ const kpiChecksCount = document.getElementById('kpiChecksCount');
 const kpiTraditionalTokens = document.getElementById('kpiTraditionalTokens');
 
 const targetSelector = document.getElementById('targetSelector');
+const btnDeleteCurrentTarget = document.getElementById('btnDeleteCurrentTarget');
 const targetTitle = document.getElementById('targetTitle');
 const targetVendor = document.getElementById('targetVendor');
 const targetExternalLink = document.getElementById('targetExternalLink');
@@ -48,7 +48,7 @@ const agentMessagesContainer = document.getElementById('agentMessagesContainer')
 const agentInputForm = document.getElementById('agentInputForm');
 const agentPromptInput = document.getElementById('agentPromptInput');
 
-// Modal Elements
+// Add Custom Target Modal
 const addModal = document.getElementById('addModal');
 const btnOpenAddModal = document.getElementById('btnOpenAddModal');
 const btnCloseAddModal = document.getElementById('btnCloseAddModal');
@@ -58,7 +58,14 @@ const newTargetUrl = document.getElementById('newTargetUrl');
 const newTargetName = document.getElementById('newTargetName');
 const newTargetThreshold = document.getElementById('newTargetThreshold');
 
-// Play alert sound on trigger
+// Manage Watchlist Modal
+const manageModal = document.getElementById('manageModal');
+const btnOpenManageModal = document.getElementById('btnOpenManageModal');
+const btnCloseManageModal = document.getElementById('btnCloseManageModal');
+const btnDoneManageModal = document.getElementById('btnDoneManageModal');
+const watchlistItemsList = document.getElementById('watchlistItemsList');
+
+// Play alert chime
 function playAlertChime() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -83,7 +90,7 @@ function initWebSocket() {
   ws = new WebSocket(wsUrl);
 
   ws.onopen = () => {
-    appendLog('SYSTEM', 'Connected to Cost Collapser Real-Time Sentinel');
+    appendLog('SYSTEM', 'Connected to Cost Collapser Real-Time Engine');
   };
 
   ws.onmessage = (event) => {
@@ -137,11 +144,20 @@ function handleWsMessage(data) {
       state.adapters = data.adapters;
       updateAdaptersDropdown(state.adapters, data.adapter.id);
       break;
+
+    case 'ADAPTER_DELETED':
+      state.adapters = data.adapters;
+      updateAdaptersDropdown(state.adapters, data.activeAdapterId);
+      renderWatchlistItems();
+      break;
   }
 }
 
 function updateAdaptersDropdown(adapters, activeId) {
-  if (!adapters) return;
+  if (!adapters || adapters.length === 0) {
+    targetSelector.innerHTML = '<option value="">(No targets watched - add one!)</option>';
+    return;
+  }
   targetSelector.innerHTML = adapters.map(a => `
     <option value="${a.id}" ${a.id === activeId ? 'selected' : ''}>
       ${a.name}
@@ -296,6 +312,47 @@ function renderAuditLog() {
   }).join('');
 }
 
+// Render Manage Watchlist items
+function renderWatchlistItems() {
+  if (!state.adapters || state.adapters.length === 0) {
+    watchlistItemsList.innerHTML = '<div class="text-muted text-center" style="padding: 20px;">No targets currently monitored.</div>';
+    return;
+  }
+
+  watchlistItemsList.innerHTML = state.adapters.map(a => `
+    <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.25); border: 1px solid var(--border); padding: 10px 14px; border-radius: 8px;">
+      <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 380px;">
+        <div style="font-weight: 700; font-size: 13px; color: #fff;">${a.name}</div>
+        <div style="font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis;">${a.url}</div>
+      </div>
+      <button class="btn btn-sm btn-outline" style="color: var(--red); border-color: rgba(239, 68, 68, 0.3);" onclick="deleteTarget('${a.id}')">
+        🗑️ Remove
+      </button>
+    </div>
+  `).join('');
+}
+
+// Delete target action
+async function deleteTarget(adapterId) {
+  if (!confirm(`Are you sure you want to remove target "${adapterId}" from your watch list?`)) return;
+
+  try {
+    const res = await fetch('/api/adapters/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adapterId })
+    });
+    const data = await res.json();
+    if (data.success) {
+      appendLog('CONFIG', `Removed target ${adapterId} from monitoring.`);
+    } else {
+      alert('Failed to delete target: ' + data.error);
+    }
+  } catch (err) {
+    alert('Error deleting target: ' + err.message);
+  }
+}
+
 // Gate Handlers
 async function approveGate(gateId) {
   try {
@@ -334,6 +391,7 @@ async function rejectGate(gateId) {
 // Target Selection Change
 targetSelector.addEventListener('change', async (e) => {
   const selectedId = e.target.value;
+  if (!selectedId) return;
   try {
     const res = await fetch('/api/monitor/select-adapter', {
       method: 'POST',
@@ -351,6 +409,12 @@ targetSelector.addEventListener('change', async (e) => {
   } catch (err) {
     alert('Failed to switch target: ' + err.message);
   }
+});
+
+// Delete Active Target Button
+btnDeleteCurrentTarget.addEventListener('click', () => {
+  const currentId = targetSelector.value;
+  if (currentId) deleteTarget(currentId);
 });
 
 // Update Threshold
@@ -376,20 +440,20 @@ btnUpdateThreshold.addEventListener('click', async () => {
   }
 });
 
-// Quick Trigger: Set threshold above current price to test real alert
+// Quick Trigger
 btnSetThresholdTrigger.addEventListener('click', () => {
   const currentPriceText = targetCurrentPrice.textContent.replace(/[^0-9.]/g, '');
-  const currentVal = parseFloat(currentPriceText) || 50.0;
-  const triggerVal = currentVal + 5.00;
+  const currentVal = parseFloat(currentPriceText) || 10.0;
+  const triggerVal = currentVal + 2.00;
   thresholdInput.value = triggerVal.toFixed(2);
   btnUpdateThreshold.click();
 });
 
-// Reset Threshold below current price
+// Reset Threshold below price
 btnResetThreshold.addEventListener('click', () => {
   const currentPriceText = targetCurrentPrice.textContent.replace(/[^0-9.]/g, '');
-  const currentVal = parseFloat(currentPriceText) || 50.0;
-  const resetVal = Math.max(1.0, currentVal - 10.00);
+  const currentVal = parseFloat(currentPriceText) || 10.0;
+  const resetVal = Math.max(1.0, currentVal - 5.00);
   thresholdInput.value = resetVal.toFixed(2);
   btnUpdateThreshold.click();
 });
@@ -431,10 +495,17 @@ btnSendTestWebhook.addEventListener('click', async () => {
   }
 });
 
-// Custom Target Modal
+// Modal Events
 btnOpenAddModal.addEventListener('click', () => addModal.style.display = 'flex');
 btnCloseAddModal.addEventListener('click', () => addModal.style.display = 'none');
 btnCancelAddModal.addEventListener('click', () => addModal.style.display = 'none');
+
+btnOpenManageModal.addEventListener('click', () => {
+  renderWatchlistItems();
+  manageModal.style.display = 'flex';
+});
+btnCloseManageModal.addEventListener('click', () => manageModal.style.display = 'none');
+btnDoneManageModal.addEventListener('click', () => manageModal.style.display = 'none');
 
 btnSubmitAddTarget.addEventListener('click', async () => {
   const url = newTargetUrl.value.trim();
@@ -573,9 +644,10 @@ if (agentInputForm) {
   });
 }
 
-// Expose globals for inline HTML onclick handlers
+// Expose globals for inline onclick
 window.approveGate = approveGate;
 window.rejectGate = rejectGate;
+window.deleteTarget = deleteTarget;
 
 // Initialize
 initWebSocket();

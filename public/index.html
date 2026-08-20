@@ -67,19 +67,28 @@
             <div class="card-title">Live Monitored Web Target</div>
             <div class="card-subtitle">Select any live public website or add your own custom URL</div>
           </div>
-          <button class="btn btn-sm btn-outline" id="btnOpenAddModal">➕ Add Custom URL</button>
+          <div class="card-header-actions">
+            <button class="btn btn-sm btn-outline" id="btnOpenManageModal">📋 Manage Watchlist</button>
+            <button class="btn btn-sm btn-primary" id="btnOpenAddModal">➕ Add Custom URL</button>
+          </div>
         </div>
 
         <div class="card-body">
-          <!-- Target Switcher Dropdown -->
+          <!-- Target Switcher Dropdown & Delete Row -->
           <div class="form-group" style="margin-bottom: 16px;">
-            <label class="form-label">Active Monitoring Target</label>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <label class="form-label" style="margin: 0;">Active Monitoring Target</label>
+              <button class="btn btn-sm btn-outline" id="btnDeleteCurrentTarget" style="color: var(--red); border-color: rgba(239, 68, 68, 0.3); padding: 3px 8px; font-size: 11px;">
+                🗑️ Remove Active Target
+              </button>
+            </div>
             <select id="targetSelector" class="form-select">
+              <option value="live-hm-onesie">👗 H&M (Live Store) - Newborn Bodysuits</option>
               <option value="live-books-attic">📚 Books Store (Live Web) - A Light in the Attic</option>
-              <option value="live-books-velvet">📚 Books Store (Live Web) - Tipping the Velvet</option>
               <option value="live-crypto-eth">💎 Live Ethereum Market Price (CoinGecko API)</option>
             </select>
           </div>
+
 
           <!-- Product Details Banner -->
           <div class="target-info-box">
@@ -273,6 +282,29 @@
         <div class="modal-actions">
           <button class="btn btn-outline" id="btnCancelAddModal">Cancel</button>
           <button class="btn btn-primary" id="btnSubmitAddTarget">Add & Start Monitoring</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Manage Watchlist -->
+  <div class="modal-backdrop" id="manageModal" style="display: none;">
+    <div class="modal-card" style="max-width: 580px;">
+      <div class="modal-header">
+        <div class="modal-title">📋 Manage Active Web Watchlist</div>
+        <button class="modal-close" id="btnCloseManageModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
+          View or remove websites currently tracked in your zero-token monitoring pipeline.
+        </p>
+
+        <div id="watchlistItemsList" style="display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto; margin-bottom: 16px;">
+          <!-- Dynamically populated -->
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn btn-outline" id="btnDoneManageModal">Close</button>
         </div>
       </div>
     </div>
