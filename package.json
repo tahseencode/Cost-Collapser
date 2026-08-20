@@ -9,6 +9,7 @@
   },
   "scripts": {
     "start": "node src/server.js",
+    "agent": "node src/agent/interactiveAgent.js",
     "monitor": "node src/sentinel/monitor.js",
     "cli": "node src/sentinel/cli.js",
     "demo": "node src/server.js --demo",
