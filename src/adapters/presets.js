@@ -1,4 +1,20 @@
 export const ADAPTER_PRESETS = {
+  'apex-industrial': {
+    id: 'apex-industrial',
+    name: 'Apex Titan Carbide Drill Bit 5000',
+    url: 'http://localhost:4100/products/titan-carbide-drill-5000',
+    type: 'html-selector',
+    description: 'Local Mock E-Commerce Industrial Supply Store',
+    threshold: 50.00,
+    selectors: {
+      item: '#product-title',
+      price: '#product-price',
+      currency: '#currency-symbol',
+      inStock: '#stock-status',
+      sku: '#product-sku',
+      vendor: 'Apex Industrial Supply Corp'
+    }
+  },
   'live-hm-onesie': {
     id: 'live-hm-onesie',
     name: 'H&M (Live E-Commerce) - Newborn Bodysuits',

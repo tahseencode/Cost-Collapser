@@ -213,6 +213,15 @@ export class AdapterEngine {
       });
     }
 
+    // 4. Parse stock availability
+    let inStock = true;
+    if (adapter.selectors?.inStock) {
+      const rawStock = $(adapter.selectors.inStock).first().text().trim();
+      if (rawStock) {
+        inStock = /in stock|available|units ready/i.test(rawStock) && !/out of stock|unavailable/i.test(rawStock);
+      }
+    }
+
     const latencyMs = Math.round(performance.now() - startTime);
     return {
       success: cleanPrice > 0,
@@ -220,7 +229,7 @@ export class AdapterEngine {
       item: rawItem,
       price: cleanPrice,
       currency,
-      inStock: true,
+      inStock,
       sku: 'DOM-EXTRACTED',
       vendor: adapter.selectors?.vendor || new URL(adapter.url).hostname,
       threshold: adapter.threshold,
