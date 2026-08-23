@@ -2,15 +2,20 @@ import * as cheerio from 'cheerio';
 import puppeteer from 'puppeteer-core';
 import fs from 'fs';
 import { ADAPTER_PRESETS } from './presets.js';
+import { MOCK_PRODUCTS } from '../mock-store/storeData.js';
 
-// Locate installed Chrome / Edge browser binary
+// Locate installed Chrome / Edge browser binary across Windows and Linux
 function getBrowserExecutablePath() {
   const candidates = [
     'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
     'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-    process.env.LOCALAPPDATA + '\\Google\\Chrome\\Application\\chrome.exe',
+    (process.env.LOCALAPPDATA || '') + '\\Google\\Chrome\\Application\\chrome.exe',
     'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
-    'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe'
+    'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+    '/usr/bin/google-chrome',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+    '/snap/bin/chromium'
   ];
   for (const p of candidates) {
     if (p && fs.existsSync(p)) return p;
@@ -68,6 +73,7 @@ export class AdapterEngine {
 
   /**
    * Universal Extraction Engine
+   * Tier 0: Internal Mock Store (0ms, 0 tokens)
    * Tier 1: Ultra-fast direct HTTP fetch (< 300ms, 0 tokens)
    * Tier 2: Real Browser Engine Fallback for Akamai/Cloudflare/React/H&M (0 tokens)
    */
@@ -85,6 +91,28 @@ export class AdapterEngine {
     }
 
     try {
+      // 0. Mock Store target (Runs in-memory on localhost & Vercel)
+      if (adapter.type === 'mock-store' || adapter.id === 'apex-industrial' || adapter.url?.includes('localhost:4100') || adapter.url?.startsWith('/products/')) {
+        const prodId = adapter.url?.split('/products/')?.[1] || 'titan-carbide-drill-5000';
+        const prod = MOCK_PRODUCTS[prodId] || MOCK_PRODUCTS['titan-carbide-drill-5000'];
+        const latencyMs = Math.max(1, Math.round(performance.now() - startTime));
+        return {
+          success: true,
+          adapterId: adapter.id,
+          item: prod.title,
+          price: prod.price,
+          currency: prod.currency || '$',
+          inStock: prod.inStock,
+          sku: prod.sku,
+          vendor: prod.vendor,
+          threshold: adapter.threshold,
+          triggered: prod.price > 0 && prod.price <= adapter.threshold,
+          timestamp: new Date().toISOString(),
+          latencyMs,
+          tokensConsumed: 0
+        };
+      }
+
       // 1. JSON API target
       if (adapter.type === 'json-api') {
         return await this.executeJsonApi(adapter, startTime);
@@ -99,26 +127,34 @@ export class AdapterEngine {
       }
 
       // 3. Tier 2: Real Browser Engine Fallback (for H&M, Zara, Nike, Akamai/Cloudflare SPA targets)
-      console.log(`[AdapterEngine] Tier 1 fetch blocked or empty for ${adapter.url}. Engaging Real Browser Engine...`);
-      const browserResult = await this.executeRealBrowser(adapter, startTime);
-      return browserResult;
-
-    } catch (error) {
-      // Fallback to real browser if http failed entirely
-      try {
+      if (this.browserPath) {
+        console.log(`[AdapterEngine] Tier 1 fetch blocked or empty for ${adapter.url}. Engaging Real Browser Engine...`);
         const browserResult = await this.executeRealBrowser(adapter, startTime);
         return browserResult;
-      } catch (browserError) {
-        const latencyMs = Math.round(performance.now() - startTime);
-        return {
-          success: false,
-          adapterId: adapter?.id || 'unknown',
-          error: error.message,
-          timestamp: new Date().toISOString(),
-          latencyMs,
-          tokensConsumed: 0
-        };
       }
+
+      // Return fastResult even if empty price rather than failing
+      return fastResult;
+
+    } catch (error) {
+      // Fallback to real browser if http failed entirely and browser is available
+      if (this.browserPath) {
+        try {
+          const browserResult = await this.executeRealBrowser(adapter, startTime);
+          return browserResult;
+        } catch (browserError) {
+          // fall through
+        }
+      }
+      const latencyMs = Math.round(performance.now() - startTime);
+      return {
+        success: false,
+        adapterId: adapter?.id || 'unknown',
+        error: error.message,
+        timestamp: new Date().toISOString(),
+        latencyMs,
+        tokensConsumed: 0
+      };
     }
   }
 

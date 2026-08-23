@@ -3,8 +3,11 @@
  */
 
 let ws = null;
+let isWsConnected = false;
+let pollingTimer = null;
+
 let state = {
-  status: { isRunning: true, pollIntervalSec: 5, activeAdapterId: 'live-hm-onesie' },
+  status: { isRunning: true, pollIntervalSec: 5, activeAdapterId: 'live-books-attic' },
   metrics: null,
   pendingGates: [],
   auditLog: [],
@@ -91,28 +94,106 @@ function playAlertChime() {
   } catch (e) {}
 }
 
-// WebSocket Connection
-function initWebSocket() {
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsUrl = `${protocol}//${window.location.host}`;
-  ws = new WebSocket(wsUrl);
+// Initial HTTP Fetch (Guarantees instant price rendering on Vercel & Cold Starts)
+async function fetchInitialState() {
+  try {
+    const res = await fetch('/api/status?tick=true');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (data.success) {
+      state.status = data.status || state.status;
+      state.pendingGates = data.pendingGates || [];
+      state.auditLog = data.auditLog || [];
+      state.adapters = data.adapters || [];
+      if (data.emailConfig) updateEmailUI(data.emailConfig);
+      updateAdaptersDropdown(state.adapters, data.status?.activeAdapterId || state.status.activeAdapterId);
+      updateMetricsUI(data.metrics || data.status?.metrics);
+      renderPendingGates();
+      renderAuditLog();
 
-  ws.onopen = () => {
-    appendLog('SYSTEM', 'Connected to Cost Collapser Real-Time Engine');
-  };
-
-  ws.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data);
-      handleWsMessage(data);
-    } catch (err) {
-      console.error('Error parsing WS message:', err);
+      if (data.latestCheck) {
+        handleSentinelCheck(data.latestCheck, data.metrics || data.status?.metrics);
+      }
     }
-  };
+  } catch (err) {
+    console.warn('[Cost Collapser] Initial status fetch notice:', err.message);
+  }
+}
 
-  ws.onclose = () => {
-    setTimeout(initWebSocket, 2000);
-  };
+// Serverless Adaptive Polling (Ensures live monitoring continues in Vercel serverless environments)
+async function pollServerlessTick() {
+  if (isWsConnected) return; // If WebSocket is active, WebSocket broadcasts handle real-time events
+
+  try {
+    const res = await fetch('/api/tick');
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.success && data.entry) {
+      if (data.adapters) {
+        state.adapters = data.adapters;
+        updateAdaptersDropdown(state.adapters, data.status?.activeAdapterId || state.status.activeAdapterId);
+      }
+      if (data.pendingGates) {
+        state.pendingGates = data.pendingGates;
+        renderPendingGates();
+      }
+      if (data.auditLog) {
+        state.auditLog = data.auditLog;
+        renderAuditLog();
+      }
+      handleSentinelCheck(data.entry, data.metrics);
+
+      if (data.entry.triggered) {
+        const matchingGate = (data.pendingGates || []).find(g => g.data?.trigger?.adapterId === data.entry.adapterId);
+        if (matchingGate) {
+          handleWakeUpAlert({ wakeEvent: matchingGate.data, result: data.entry, gate: matchingGate }, data.metrics);
+        }
+      }
+    }
+  } catch (err) {
+    // Network glitch handled gracefully
+  }
+}
+
+function startPolling() {
+  if (pollingTimer) clearInterval(pollingTimer);
+  pollingTimer = setInterval(pollServerlessTick, 4000);
+}
+
+// WebSocket Connection (Dual-Mode: WebSocket for Local Node, HTTP Polling Fallback for Vercel)
+function initWebSocket() {
+  startPolling();
+
+  try {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}`;
+    ws = new WebSocket(wsUrl);
+
+    ws.onopen = () => {
+      isWsConnected = true;
+      appendLog('SYSTEM', 'Connected to Cost Collapser Real-Time Engine (WebSocket Active)');
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        handleWsMessage(data);
+      } catch (err) {
+        console.error('Error parsing WS message:', err);
+      }
+    };
+
+    ws.onerror = () => {
+      isWsConnected = false;
+    };
+
+    ws.onclose = () => {
+      isWsConnected = false;
+      setTimeout(initWebSocket, 5000);
+    };
+  } catch (e) {
+    isWsConnected = false;
+  }
 }
 
 function handleWsMessage(data) {
@@ -418,11 +499,13 @@ targetSelector.addEventListener('change', async (e) => {
     });
     const data = await res.json();
     if (data.success) {
+      state.status.activeAdapterId = selectedId;
       appendLog('TARGET', `Switched monitoring target to: ${selectedId}`);
       if (data.adapter) {
         thresholdInput.value = data.adapter.threshold;
         thresholdValueBadge.textContent = `$${data.adapter.threshold.toFixed(2)}`;
       }
+      pollServerlessTick();
     }
   } catch (err) {
     alert('Failed to switch target: ' + err.message);
@@ -452,6 +535,7 @@ btnUpdateThreshold.addEventListener('click', async () => {
       thresholdValueBadge.textContent = `$${val.toFixed(2)}`;
       targetThresholdDisplay.textContent = `$${val.toFixed(2)}`;
       appendLog('CONFIG', `Updated alert threshold to $${val.toFixed(2)} for ${selectedId}`);
+      pollServerlessTick();
     }
   } catch (err) {
     alert('Failed to update threshold: ' + err.message);
@@ -622,6 +706,7 @@ btnSubmitAddTarget.addEventListener('click', async () => {
       newTargetUrl.value = '';
       newTargetName.value = '';
       appendLog('TARGET', `Registered and started monitoring new live URL: ${url}`);
+      pollServerlessTick();
     } else {
       alert('Failed to register target: ' + data.error);
     }
@@ -741,5 +826,6 @@ window.approveGate = approveGate;
 window.rejectGate = rejectGate;
 window.deleteTarget = deleteTarget;
 
-// Initialize
+// Initialize: Immediately populate state via HTTP & attempt WebSocket connection
+fetchInitialState();
 initWebSocket();

@@ -13,20 +13,24 @@ import { wakeUpEngine } from './agent/wakeUpEngine.js';
 import { autonomousAgent } from './agent/autonomousAgent.js';
 import { browserAgent } from './agent/browserAgent.js';
 import { emailService } from './services/emailService.js';
+import { storeRouter } from './mock-store/storeRouter.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.join(__dirname, '..');
 
 // Initialize Express App
-const app = express();
+export const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Serve Mock Store Endpoints
+app.use(storeRouter);
 
 // Serve Static Assets
 app.use(express.static(path.join(projectRoot, 'public')));
 
-const server = http.createServer(app);
+export const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
 // Track connected WebSocket clients
@@ -131,15 +135,44 @@ approvalGate.on('gate_resolved', (gate) => {
 
 // ================= REST API ROUTES =================
 
-// 1. Status & Metrics API
-app.get('/api/status', (req, res) => {
-  res.json({
-    success: true,
-    status: sentinelMonitor.getStatus(),
-    adapters: adapterEngine.getAllAdapters(),
-    pendingGates: approvalGate.getPendingGates(),
-    metrics: costCalculator.getMetrics()
-  });
+// 1. Status & Metrics API (Supports automatic serverless initial tick)
+app.get('/api/status', async (req, res) => {
+  try {
+    let recentCheck = sentinelMonitor.getRecentHistory()[0];
+    if (!recentCheck || req.query.tick === 'true') {
+      recentCheck = await sentinelMonitor.tick();
+    }
+    res.json({
+      success: true,
+      status: sentinelMonitor.getStatus(),
+      latestCheck: recentCheck || null,
+      adapters: adapterEngine.getAllAdapters(),
+      pendingGates: approvalGate.getPendingGates(),
+      auditLog: approvalGate.getAuditLog().slice(0, 10),
+      metrics: costCalculator.getMetrics(),
+      emailConfig: emailService.getConfig()
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 1b. Serverless & Manual Check Tick API
+app.get('/api/tick', async (req, res) => {
+  try {
+    const entry = await sentinelMonitor.tick();
+    res.json({
+      success: true,
+      entry,
+      status: sentinelMonitor.getStatus(),
+      metrics: costCalculator.getMetrics(),
+      pendingGates: approvalGate.getPendingGates(),
+      auditLog: approvalGate.getAuditLog().slice(0, 10),
+      adapters: adapterEngine.getAllAdapters()
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // 2. Real-Time Monitor Controls
@@ -365,15 +398,17 @@ app.post('/api/email/test', async (req, res) => {
 });
 
 
-// Start Servers
+// Start Server (Standalone / Local Mode)
 const PORT = CONFIG.PORT;
-server.listen(PORT, () => {
-  console.log(`\n======================================================`);
-  console.log(`⚡ COST COLLAPSER ACTIVE`);
-  console.log(`📡 Dashboard: http://localhost:${PORT}`);
-  console.log(`🌍 Default Live Target: ${CONFIG.DEFAULT_ADAPTER}`);
-  console.log(`======================================================\n`);
+if (!process.env.VERCEL && !process.env.NOW_REGION && process.env.NODE_ENV !== 'test') {
+  server.listen(PORT, () => {
+    console.log(`\n======================================================`);
+    console.log(`⚡ COST COLLAPSER ACTIVE`);
+    console.log(`📡 Dashboard: http://localhost:${PORT}`);
+    console.log(`🌍 Default Live Target: ${CONFIG.DEFAULT_ADAPTER}`);
+    console.log(`======================================================\n`);
 
-  // Start continuous 0-token monitoring of real public web target
-  sentinelMonitor.start(CONFIG.DEFAULT_ADAPTER, CONFIG.POLL_INTERVAL_SEC);
-});
+    // Start continuous 0-token monitoring of real public web target
+    sentinelMonitor.start(CONFIG.DEFAULT_ADAPTER, CONFIG.POLL_INTERVAL_SEC);
+  });
+}
