@@ -40,7 +40,8 @@ app.get('/', (req, res) => {
   } else if (fs.existsSync(rootIndex)) {
     return res.sendFile(rootIndex);
   }
-  res.sendFile(path.resolve('public/index.html'));
+  res.setHeader('Content-Type', 'text/html');
+  res.send('<!DOCTYPE html><html><head><title>Cost Collapser</title></head><body><h1>⚡ Cost Collapser Active</h1></body></html>');
 });
 
 export const server = http.createServer(app);
