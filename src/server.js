@@ -1,6 +1,7 @@
 import express from 'express';
 import http from 'http';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { WebSocketServer, WebSocket } from 'ws';
 import { CONFIG } from './config.js';
@@ -29,33 +30,55 @@ app.use(storeRouter);
 
 // Serve Static Assets
 app.use(express.static(path.join(projectRoot, 'public')));
+app.use(express.static(projectRoot));
 
-export const server = http.createServer(app);
-const wss = new WebSocketServer({ server });
-
-// Track connected WebSocket clients
-const clients = new Set();
-
-wss.on('connection', (ws) => {
-  clients.add(ws);
-
-  // Send initial state upon connection
-  ws.send(JSON.stringify({
-    type: 'INIT_STATE',
-    status: sentinelMonitor.getStatus(),
-    history: sentinelMonitor.getRecentHistory().slice(0, 20),
-    pendingGates: approvalGate.getPendingGates(),
-    auditLog: approvalGate.getAuditLog().slice(0, 10),
-    adapters: adapterEngine.getAllAdapters(),
-    emailConfig: emailService.getConfig()
-  }));
-
-  ws.on('close', () => {
-    clients.delete(ws);
-  });
+app.get('/', (req, res) => {
+  const publicIndex = path.join(projectRoot, 'public', 'index.html');
+  const rootIndex = path.join(projectRoot, 'index.html');
+  if (fs.existsSync(publicIndex)) {
+    return res.sendFile(publicIndex);
+  } else if (fs.existsSync(rootIndex)) {
+    return res.sendFile(rootIndex);
+  }
+  res.sendFile(path.resolve('public/index.html'));
 });
 
+export const server = http.createServer(app);
+
+// Track connected WebSocket clients
+let wss = null;
+const clients = new Set();
+
+// Only initialize WebSocket server in standalone Node.js server mode (not in Vercel Serverless)
+if (!process.env.VERCEL && !process.env.NOW_REGION) {
+  try {
+    wss = new WebSocketServer({ server });
+
+    wss.on('connection', (ws) => {
+      clients.add(ws);
+
+      // Send initial state upon connection
+      ws.send(JSON.stringify({
+        type: 'INIT_STATE',
+        status: sentinelMonitor.getStatus(),
+        history: sentinelMonitor.getRecentHistory().slice(0, 20),
+        pendingGates: approvalGate.getPendingGates(),
+        auditLog: approvalGate.getAuditLog().slice(0, 10),
+        adapters: adapterEngine.getAllAdapters(),
+        emailConfig: emailService.getConfig()
+      }));
+
+      ws.on('close', () => {
+        clients.delete(ws);
+      });
+    });
+  } catch (err) {
+    console.warn('[WebSocket Init Notice]', err.message);
+  }
+}
+
 function broadcast(payload) {
+  if (!wss || clients.size === 0) return;
   const msg = JSON.stringify(payload);
   for (const client of clients) {
     if (client.readyState === WebSocket.OPEN) {

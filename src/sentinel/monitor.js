@@ -101,6 +101,14 @@ export class SentinelMonitor extends EventEmitter {
       return entry;
     } catch (err) {
       this.emit('error', { error: err.message, timestamp: new Date().toISOString() });
+      return {
+        id: 'ERR-' + Date.now().toString(36),
+        success: false,
+        adapterId: this.activeAdapterId,
+        error: err.message,
+        timestamp: new Date().toISOString(),
+        metrics: costCalculator.getMetrics()
+      };
     }
   }
 
