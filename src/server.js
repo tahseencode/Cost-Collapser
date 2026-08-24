@@ -46,6 +46,15 @@ app.get('/', (req, res) => {
 
 export const server = http.createServer(app);
 
+// Vercel's Node.js runtime requires the DEFAULT export to be a function
+// or an http.Server. Named exports alone (export const app / server)
+// are not enough when Vercel loads this file directly as the function
+// entrypoint (e.g. via package.json's "main" field with no explicit
+// builds/functions config in vercel.json). This is what was causing:
+// "Invalid export found in module '/var/task/src/server.js'.
+//  The default export must be a function or server."
+export default app;
+
 // Track connected WebSocket clients
 let wss = null;
 const clients = new Set();
@@ -268,10 +277,10 @@ app.post('/api/adapters/register', async (req, res) => {
     sentinelMonitor.setActiveAdapter(registered.id);
     sentinelMonitor.tick();
 
-    broadcast({ 
-      type: 'ADAPTER_REGISTERED', 
-      adapter: registered, 
-      adapters: adapterEngine.getAllAdapters() 
+    broadcast({
+      type: 'ADAPTER_REGISTERED',
+      adapter: registered,
+      adapters: adapterEngine.getAllAdapters()
     });
 
     res.json({ success: true, adapter: registered, testResult });
@@ -304,10 +313,10 @@ app.post('/api/adapters/delete', (req, res) => {
       activeAdapterId: sentinelMonitor.activeAdapterId
     });
 
-    res.json({ 
-      success: true, 
-      adapters: adapterEngine.getAllAdapters(), 
-      activeAdapterId: sentinelMonitor.activeAdapterId 
+    res.json({
+      success: true,
+      adapters: adapterEngine.getAllAdapters(),
+      activeAdapterId: sentinelMonitor.activeAdapterId
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -361,11 +370,11 @@ app.post('/api/webhook/send', async (req, res) => {
   try {
     const { webhookUrl, message, details } = req.body;
     const targetUrl = webhookUrl || CONFIG.SLACK_WEBHOOK_URL || CONFIG.DISCORD_WEBHOOK_URL;
-    
+
     if (!targetUrl) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'No Webhook URL configured. Please provide a Slack or Discord webhook URL.' 
+      return res.status(400).json({
+        success: false,
+        error: 'No Webhook URL configured. Please provide a Slack or Discord webhook URL.'
       });
     }
 
