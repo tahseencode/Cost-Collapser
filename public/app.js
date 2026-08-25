@@ -241,7 +241,13 @@ function handleWsMessage(data) {
 
     case 'ADAPTER_REGISTERED':
       state.adapters = data.adapters;
-      updateAdaptersDropdown(state.adapters, data.adapter.id);
+      if (data.adapter) {
+        state.status.activeAdapterId = data.adapter.id;
+        updateAdaptersDropdown(state.adapters, data.adapter.id);
+      }
+      if (data.latestCheck) {
+        handleSentinelCheck(data.latestCheck, state.metrics);
+      }
       break;
 
     case 'ADAPTER_DELETED':
@@ -265,19 +271,27 @@ function updateAdaptersDropdown(adapters, activeId) {
 }
 
 function handleSentinelCheck(entry, metrics) {
+  if (!entry) return;
   updateMetricsUI(metrics);
 
   const curr = entry.currency || '$';
-  targetCurrentPrice.textContent = `${curr}${entry.price.toFixed(2)}`;
+  const priceDisplay = (typeof entry.price === 'number' && entry.price > 0)
+    ? `${curr}${entry.price.toFixed(2)}`
+    : (entry.price === 0 ? `${curr}0.00 (Scanning...)` : 'N/A');
+
+  targetCurrentPrice.textContent = priceDisplay;
   targetTitle.textContent = entry.item || 'Live Web Target';
   targetVendor.textContent = `Vendor: ${entry.vendor || 'Live Web Supplier'}`;
-  targetLatency.textContent = `${entry.latencyMs}ms`;
+  targetLatency.textContent = `${entry.latencyMs || 0}ms`;
 
   const adapter = state.adapters.find(a => a.id === entry.adapterId);
   if (adapter) {
     targetExternalLink.href = adapter.url;
     targetThresholdDisplay.textContent = `${curr}${adapter.threshold.toFixed(2)}`;
     thresholdValueBadge.textContent = `${curr}${adapter.threshold.toFixed(2)}`;
+  } else if (entry.threshold) {
+    targetThresholdDisplay.textContent = `${curr}${entry.threshold.toFixed(2)}`;
+    thresholdValueBadge.textContent = `${curr}${entry.threshold.toFixed(2)}`;
   }
 
   targetStockStatus.textContent = entry.inStock ? 'In Stock' : 'Out of Stock';
@@ -289,8 +303,8 @@ function handleSentinelCheck(entry, metrics) {
     <div class="log-line">
       <span class="log-time">[${time}]</span>
       <span>${entry.adapterId}</span>
-      <span style="color:#fff; font-weight:600;">${curr}${entry.price.toFixed(2)}</span>
-      <span class="log-green">(0 tokens &bull; ${entry.latencyMs}ms)</span>
+      <span style="color:#fff; font-weight:600;">${priceDisplay}</span>
+      <span class="log-green">(0 tokens &bull; ${entry.latencyMs || 0}ms)</span>
       ${alertTag}
     </div>
   `;
@@ -505,6 +519,9 @@ targetSelector.addEventListener('change', async (e) => {
         thresholdInput.value = data.adapter.threshold;
         thresholdValueBadge.textContent = `$${data.adapter.threshold.toFixed(2)}`;
       }
+      if (data.latestCheck) {
+        handleSentinelCheck(data.latestCheck, data.metrics || state.metrics);
+      }
       pollServerlessTick();
     }
   } catch (err) {
@@ -688,11 +705,11 @@ btnSubmitAddTarget.addEventListener('click', async () => {
   const name = newTargetName.value.trim();
   const threshold = parseFloat(newTargetThreshold.value);
 
-  if (!url) return alert('Please enter a valid website URL.');
+  if (!url) return alert('Please enter a valid website URL (e.g. books.toscrape.com or any product link).');
   if (isNaN(threshold) || threshold <= 0) return alert('Please enter a valid threshold.');
 
   btnSubmitAddTarget.disabled = true;
-  btnSubmitAddTarget.textContent = 'Analyzing & Registering...';
+  btnSubmitAddTarget.textContent = '⚡ Extracting Price & Registering...';
 
   try {
     const res = await fetch('/api/adapters/register', {
@@ -705,7 +722,32 @@ btnSubmitAddTarget.addEventListener('click', async () => {
       addModal.style.display = 'none';
       newTargetUrl.value = '';
       newTargetName.value = '';
-      appendLog('TARGET', `Registered and started monitoring new live URL: ${url}`);
+
+      // Update state adapters list
+      if (data.adapters) {
+        state.adapters = data.adapters;
+      } else if (!state.adapters.some(a => a.id === data.adapter.id)) {
+        state.adapters.push(data.adapter);
+      }
+
+      // Switch active target
+      state.status.activeAdapterId = data.adapter.id;
+      updateAdaptersDropdown(state.adapters, data.adapter.id);
+
+      // Update threshold displays
+      thresholdInput.value = data.adapter.threshold;
+      thresholdValueBadge.textContent = `$${data.adapter.threshold.toFixed(2)}`;
+
+      // Immediately render the extracted live result
+      if (data.testResult) {
+        handleSentinelCheck(data.testResult, data.metrics || state.metrics);
+        const curr = data.testResult.currency || '$';
+        const priceStr = data.testResult.price > 0 ? `${curr}${data.testResult.price.toFixed(2)}` : 'Price Scanning...';
+        appendLog('TARGET', `Registered "${data.adapter.name}" -> ${priceStr} (${data.testResult.latencyMs || 0}ms)`);
+      } else {
+        appendLog('TARGET', `Registered and started monitoring: ${data.adapter.name}`);
+      }
+
       pollServerlessTick();
     } else {
       alert('Failed to register target: ' + data.error);
