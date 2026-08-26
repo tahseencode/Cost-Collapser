@@ -191,7 +191,7 @@ export class AdapterEngine {
         return fastResult;
       }
 
-      // 3. Tier 2: Real Headless Browser Engine Fallback (for SPAs, React/Next.js hydration, Cloudflare)
+      // 3. Tier 2: Real Headless Browser (Local Node) or Serverless Reader Proxy (Vercel)
       if (this.browserPath) {
         try {
           console.log(`[AdapterEngine] Engaging Headless Browser for ${adapter.url}...`);
@@ -201,6 +201,16 @@ export class AdapterEngine {
           }
         } catch (browserError) {
           console.warn(`[AdapterEngine] Headless browser notice: ${browserError.message}`);
+        }
+      } else {
+        // Serverless Cloud Fallback (e.g. Vercel)
+        try {
+          const proxyResult = await this.executeProxyReader(adapter, startTime);
+          if (proxyResult && proxyResult.price > 0) {
+            return proxyResult;
+          }
+        } catch (proxyError) {
+          console.warn(`[AdapterEngine] Proxy reader notice: ${proxyError.message}`);
         }
       }
 
@@ -434,7 +444,6 @@ export class AdapterEngine {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/json,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9',
-        'Accept-Encoding': 'identity',
         'Sec-Ch-Ua': '"Chromium";v="128", "Not;A=Brand";v="24", "Google Chrome";v="128"',
         'Sec-Ch-Ua-Mobile': '?0',
         'Sec-Ch-Ua-Platform': '"Windows"',
@@ -444,7 +453,8 @@ export class AdapterEngine {
         'Sec-Fetch-User': '?1',
         'Upgrade-Insecure-Requests': '1'
       },
-      redirect: 'follow'
+      redirect: 'follow',
+      signal: AbortSignal.timeout(7000)
     });
 
     if (!response.ok) {
@@ -960,6 +970,62 @@ export class AdapterEngine {
       currency: '$',
       inStock: true,
       sku: 'API-LIVE-FEED',
+      vendor: vendorName,
+      threshold: adapter.threshold,
+      triggered: price > 0 && price <= adapter.threshold,
+      timestamp: new Date().toISOString(),
+      latencyMs,
+      tokensConsumed: 0
+    };
+  }
+
+  /**
+   * Tier 2b: Serverless Reader Proxy Fallback (Runs on Vercel where headless Chrome is unavailable)
+   */
+  async executeProxyReader(adapter, startTime) {
+    const cleanUrl = normalizeUrl(adapter.url);
+    const jinaUrl = 'https://r.jina.ai/' + cleanUrl;
+    const response = await fetch(jinaUrl, {
+      headers: {
+        'Accept': 'text/plain, text/markdown',
+        'User-Agent': 'Mozilla/5.0'
+      },
+      signal: AbortSignal.timeout(6000)
+    });
+
+    if (!response.ok) throw new Error(`Proxy reader HTTP ${response.status}`);
+    const text = await response.text();
+
+    let title = adapter.name || 'Live Web Target';
+    const titleMatch = text.match(/^Title:\s*(.+)$/m);
+    if (titleMatch && titleMatch[1].trim() && !/access denied|error|forbidden/i.test(titleMatch[1])) {
+      title = cleanProductTitle(titleMatch[1]);
+    }
+
+    const priceRegex = /([£\$€₹¥]\s*[0-9][0-9,]*(?:\.[0-9]{2})?|[0-9][0-9,]*(?:\.[0-9]{2})?\s*(?:USD|EUR|GBP|INR))/;
+    const match = text.match(priceRegex);
+    let price = 0;
+    let currency = '$';
+
+    if (match) {
+      const parsed = this._parsePrice(match[0]);
+      if (parsed.price > 0) {
+        price = parsed.price;
+        currency = parsed.currency;
+      }
+    }
+
+    const vendorName = adapter.selectors?.vendor || extractVendorFromUrl(cleanUrl);
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    return {
+      success: price > 0,
+      adapterId: adapter.id,
+      item: title,
+      price,
+      currency,
+      inStock: true,
+      sku: 'READER-EXTRACTED',
       vendor: vendorName,
       threshold: adapter.threshold,
       triggered: price > 0 && price <= adapter.threshold,

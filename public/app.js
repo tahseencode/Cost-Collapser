@@ -97,7 +97,10 @@ function playAlertChime() {
 // Initial HTTP Fetch (Guarantees instant price rendering on Vercel & Cold Starts)
 async function fetchInitialState() {
   try {
-    const res = await fetch('/api/status?tick=true');
+    let res = await fetch('/api/status?tick=true');
+    if (!res.ok) {
+      res = await fetch('/status?tick=true');
+    }
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (data.success) {
@@ -125,7 +128,10 @@ async function pollServerlessTick() {
   if (isWsConnected) return; // If WebSocket is active, WebSocket broadcasts handle real-time events
 
   try {
-    const res = await fetch('/api/tick');
+    let res = await fetch('/api/tick');
+    if (!res.ok) {
+      res = await fetch('/tick');
+    }
     if (!res.ok) return;
     const data = await res.json();
     if (data.success && data.entry) {
@@ -157,16 +163,23 @@ async function pollServerlessTick() {
 
 function startPolling() {
   if (pollingTimer) clearInterval(pollingTimer);
-  pollingTimer = setInterval(pollServerlessTick, 4000);
+  pollingTimer = setInterval(pollServerlessTick, 3500);
 }
 
 // WebSocket Connection (Dual-Mode: WebSocket for Local Node, HTTP Polling Fallback for Vercel)
 function initWebSocket() {
   startPolling();
 
+  // On Vercel / HTTPS production deployments, WebSockets are not available in Serverless Functions
+  // We rely 100% on fast, high-frequency HTTP polling (/api/tick every 3.5s)
+  const isVercelOrHttps = window.location.protocol === 'https:' || window.location.hostname.includes('vercel.app') || window.location.hostname.includes('now.sh');
+  if (isVercelOrHttps) {
+    appendLog('SYSTEM', 'Cost Collapser Active (Serverless Polling Mode)');
+    return;
+  }
+
   try {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}`;
+    const wsUrl = `ws://${window.location.host}`;
     ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {

@@ -168,10 +168,10 @@ approvalGate.on('gate_resolved', (gate) => {
   });
 });
 
-// ================= REST API ROUTES =================
+// ================= REST API ROUTES (Supports both /api/* and root rewrites on Vercel) =================
 
 // 1. Status & Metrics API (Supports automatic serverless initial tick)
-app.get('/api/status', async (req, res) => {
+app.get(['/api/status', '/status'], async (req, res) => {
   try {
     let recentCheck = sentinelMonitor.getRecentHistory()[0];
     if (!recentCheck || req.query.tick === 'true') {
@@ -193,7 +193,7 @@ app.get('/api/status', async (req, res) => {
 });
 
 // 1b. Serverless & Manual Check Tick API
-app.get('/api/tick', async (req, res) => {
+app.get(['/api/tick', '/tick'], async (req, res) => {
   try {
     const entry = await sentinelMonitor.tick();
     res.json({
@@ -211,24 +211,24 @@ app.get('/api/tick', async (req, res) => {
 });
 
 // 2. Real-Time Monitor Controls
-app.post('/api/monitor/start', (req, res) => {
+app.post(['/api/monitor/start', '/monitor/start'], (req, res) => {
   const { adapterId, intervalSec } = req.body;
   sentinelMonitor.start(adapterId || sentinelMonitor.activeAdapterId, intervalSec);
   res.json({ success: true, status: sentinelMonitor.getStatus() });
 });
 
-app.post('/api/monitor/stop', (req, res) => {
+app.post(['/api/monitor/stop', '/monitor/stop'], (req, res) => {
   sentinelMonitor.stop();
   res.json({ success: true, status: sentinelMonitor.getStatus() });
 });
 
-app.post('/api/monitor/interval', (req, res) => {
+app.post(['/api/monitor/interval', '/monitor/interval'], (req, res) => {
   const { intervalSec } = req.body;
   sentinelMonitor.setIntervalSec(intervalSec);
   res.json({ success: true, intervalSec: sentinelMonitor.pollIntervalSec });
 });
 
-app.post('/api/monitor/select-adapter', async (req, res) => {
+app.post(['/api/monitor/select-adapter', '/monitor/select-adapter'], async (req, res) => {
   const { adapterId } = req.body;
   const adapter = adapterEngine.getAdapter(adapterId);
   if (!adapter) {
@@ -240,7 +240,7 @@ app.post('/api/monitor/select-adapter', async (req, res) => {
   res.json({ success: true, activeAdapterId: adapterId, adapter, latestCheck });
 });
 
-app.post('/api/target/threshold', async (req, res) => {
+app.post(['/api/target/threshold', '/target/threshold'], async (req, res) => {
   const { adapterId, threshold } = req.body;
   const adapter = adapterEngine.getAdapter(adapterId || sentinelMonitor.activeAdapterId);
   if (!adapter) {
@@ -252,11 +252,11 @@ app.post('/api/target/threshold', async (req, res) => {
 });
 
 // 3. Real Target Management (Add any URL on the Web)
-app.get('/api/adapters', (req, res) => {
+app.get(['/api/adapters', '/adapters'], (req, res) => {
   res.json({ success: true, adapters: adapterEngine.getAllAdapters() });
 });
 
-app.post('/api/adapters/register', async (req, res) => {
+app.post(['/api/adapters/register', '/adapters/register'], async (req, res) => {
   try {
     const { id, name, url, threshold, selectors } = req.body;
     if (!url) return res.status(400).json({ success: false, error: 'URL is required' });
@@ -292,7 +292,7 @@ app.post('/api/adapters/register', async (req, res) => {
   }
 });
 
-app.post('/api/adapters/delete', (req, res) => {
+app.post(['/api/adapters/delete', '/adapters/delete'], (req, res) => {
   try {
     const { adapterId } = req.body;
     if (!adapterId) return res.status(400).json({ success: false, error: 'adapterId is required' });
@@ -328,15 +328,15 @@ app.post('/api/adapters/delete', (req, res) => {
 
 
 // 4. Human Approval Gate API
-app.get('/api/gate/pending', (req, res) => {
+app.get(['/api/gate/pending', '/gate/pending'], (req, res) => {
   res.json({ success: true, pendingGates: approvalGate.getPendingGates() });
 });
 
-app.get('/api/gate/audit', (req, res) => {
+app.get(['/api/gate/audit', '/gate/audit'], (req, res) => {
   res.json({ success: true, auditLog: approvalGate.getAuditLog() });
 });
 
-app.post('/api/gate/approve', async (req, res) => {
+app.post(['/api/gate/approve', '/gate/approve'], async (req, res) => {
   try {
     const { gateId, operator, notes } = req.body;
     const result = await approvalGate.approveGate(gateId, operator, notes);
@@ -346,7 +346,7 @@ app.post('/api/gate/approve', async (req, res) => {
   }
 });
 
-app.post('/api/gate/reject', async (req, res) => {
+app.post(['/api/gate/reject', '/gate/reject'], async (req, res) => {
   try {
     const { gateId, operator, reason } = req.body;
     const result = await approvalGate.rejectGate(gateId, operator, reason);
@@ -357,7 +357,7 @@ app.post('/api/gate/reject', async (req, res) => {
 });
 
 // 5. AI Agent Co-Pilot API
-app.post('/api/agent/chat', async (req, res) => {
+app.post(['/api/agent/chat', '/agent/chat'], async (req, res) => {
   try {
     const { prompt } = req.body;
     if (!prompt) return res.status(400).json({ error: 'Prompt is required' });
@@ -369,7 +369,7 @@ app.post('/api/agent/chat', async (req, res) => {
 });
 
 // 6. Real Webhook Alert Notification Dispatcher
-app.post('/api/webhook/send', async (req, res) => {
+app.post(['/api/webhook/send', '/webhook/send'], async (req, res) => {
   try {
     const { webhookUrl, message, details } = req.body;
     const targetUrl = webhookUrl || CONFIG.SLACK_WEBHOOK_URL || CONFIG.DISCORD_WEBHOOK_URL;
@@ -409,11 +409,11 @@ app.post('/api/webhook/send', async (req, res) => {
 });
 
 // 7. Gmail Alert Notifications API
-app.get('/api/email/config', (req, res) => {
+app.get(['/api/email/config', '/email/config'], (req, res) => {
   res.json({ success: true, config: emailService.getConfig() });
 });
 
-app.post('/api/email/config', (req, res) => {
+app.post(['/api/email/config', '/email/config'], (req, res) => {
   try {
     const config = emailService.updateConfig(req.body);
     broadcast({ type: 'EMAIL_CONFIG_UPDATED', config });
@@ -423,7 +423,7 @@ app.post('/api/email/config', (req, res) => {
   }
 });
 
-app.post('/api/email/test', async (req, res) => {
+app.post(['/api/email/test', '/email/test'], async (req, res) => {
   try {
     const { recipient } = req.body;
     const result = await emailService.sendTestEmail(recipient);

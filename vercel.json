@@ -2,6 +2,9 @@
   "version": 2,
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index.js" },
+    { "source": "/api", "destination": "/api/index.js" },
+    { "source": "/status", "destination": "/api/index.js" },
+    { "source": "/tick", "destination": "/api/index.js" },
     { "source": "/products/(.*)", "destination": "/api/index.js" }
   ]
 }
