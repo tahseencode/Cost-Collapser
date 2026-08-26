@@ -199,15 +199,21 @@ function initWebSocket() {
 function handleWsMessage(data) {
   switch (data.type) {
     case 'INIT_STATE':
-      state.status = data.status;
+      state.status = data.status || state.status;
       state.pendingGates = data.pendingGates || [];
       state.auditLog = data.auditLog || [];
       state.adapters = data.adapters || [];
       if (data.emailConfig) updateEmailUI(data.emailConfig);
-      updateAdaptersDropdown(state.adapters, data.status.activeAdapterId);
-      updateMetricsUI(data.status.metrics);
+      updateAdaptersDropdown(state.adapters, data.status?.activeAdapterId || state.status.activeAdapterId);
+      updateMetricsUI(data.status?.metrics || data.metrics);
       renderPendingGates();
       renderAuditLog();
+
+      if (data.latestCheck) {
+        handleSentinelCheck(data.latestCheck, data.status?.metrics || data.metrics);
+      } else if (data.history && data.history.length > 0) {
+        handleSentinelCheck(data.history[0], data.status?.metrics || data.metrics);
+      }
       break;
 
     case 'SENTINEL_CHECK':
@@ -277,8 +283,11 @@ function handleSentinelCheck(entry, metrics) {
   const curr = entry.currency || '$';
   let priceDisplay;
 
-  if (typeof entry.price === 'number' && entry.price > 0) {
-    priceDisplay = `${curr}${entry.price.toFixed(2)}`;
+  const rawNum = (typeof entry.price === 'number') ? entry.price : parseFloat(String(entry.price || '0').replace(/[^0-9.]/g, ''));
+  const hasValidPrice = !isNaN(rawNum) && rawNum > 0;
+
+  if (hasValidPrice) {
+    priceDisplay = `${curr}${rawNum.toFixed(2)}`;
     targetCurrentPrice.className = 'stat-val text-green';
   } else if (entry.error || entry.success === false) {
     priceDisplay = `${curr}0.00 (Extraction Notice)`;

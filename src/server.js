@@ -67,11 +67,13 @@ if (!process.env.VERCEL && !process.env.NOW_REGION) {
     wss.on('connection', (ws) => {
       clients.add(ws);
 
+      const recent = sentinelMonitor.getRecentHistory();
       // Send initial state upon connection
       ws.send(JSON.stringify({
         type: 'INIT_STATE',
         status: sentinelMonitor.getStatus(),
-        history: sentinelMonitor.getRecentHistory().slice(0, 20),
+        history: recent.slice(0, 20),
+        latestCheck: recent[0] || null,
         pendingGates: approvalGate.getPendingGates(),
         auditLog: approvalGate.getAuditLog().slice(0, 10),
         adapters: adapterEngine.getAllAdapters(),
