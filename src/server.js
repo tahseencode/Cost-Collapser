@@ -226,27 +226,27 @@ app.post('/api/monitor/interval', (req, res) => {
   res.json({ success: true, intervalSec: sentinelMonitor.pollIntervalSec });
 });
 
-app.post('/api/monitor/select-adapter', (req, res) => {
+app.post('/api/monitor/select-adapter', async (req, res) => {
   const { adapterId } = req.body;
   const adapter = adapterEngine.getAdapter(adapterId);
   if (!adapter) {
     return res.status(404).json({ success: false, error: `Target "${adapterId}" not found` });
   }
   sentinelMonitor.setActiveAdapter(adapterId);
-  // Trigger immediate tick for the newly selected target
-  sentinelMonitor.tick();
-  res.json({ success: true, activeAdapterId: adapterId, adapter });
+  // Trigger immediate tick for the newly selected target and return results
+  const latestCheck = await sentinelMonitor.tick();
+  res.json({ success: true, activeAdapterId: adapterId, adapter, latestCheck });
 });
 
-app.post('/api/target/threshold', (req, res) => {
+app.post('/api/target/threshold', async (req, res) => {
   const { adapterId, threshold } = req.body;
   const adapter = adapterEngine.getAdapter(adapterId || sentinelMonitor.activeAdapterId);
   if (!adapter) {
     return res.status(404).json({ success: false, error: 'Adapter not found' });
   }
   adapter.threshold = parseFloat(threshold);
-  sentinelMonitor.tick();
-  res.json({ success: true, adapterId: adapter.id, threshold: adapter.threshold });
+  const latestCheck = await sentinelMonitor.tick();
+  res.json({ success: true, adapterId: adapter.id, threshold: adapter.threshold, latestCheck });
 });
 
 // 3. Real Target Management (Add any URL on the Web)
@@ -273,17 +273,18 @@ app.post('/api/adapters/register', async (req, res) => {
     // Test the new target live
     const testResult = await adapterEngine.execute(registered);
 
-    // Switch to this new live target
+    // Switch to this new live target and run tick
     sentinelMonitor.setActiveAdapter(registered.id);
-    sentinelMonitor.tick();
+    const latestCheck = await sentinelMonitor.tick();
 
     broadcast({
       type: 'ADAPTER_REGISTERED',
       adapter: registered,
-      adapters: adapterEngine.getAllAdapters()
+      adapters: adapterEngine.getAllAdapters(),
+      latestCheck
     });
 
-    res.json({ success: true, adapter: registered, testResult });
+    res.json({ success: true, adapter: registered, testResult: latestCheck || testResult, latestCheck });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
   }

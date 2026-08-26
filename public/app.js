@@ -275,9 +275,18 @@ function handleSentinelCheck(entry, metrics) {
   updateMetricsUI(metrics);
 
   const curr = entry.currency || '$';
-  const priceDisplay = (typeof entry.price === 'number' && entry.price > 0)
-    ? `${curr}${entry.price.toFixed(2)}`
-    : (entry.price === 0 ? `${curr}0.00 (Scanning...)` : 'N/A');
+  let priceDisplay;
+
+  if (typeof entry.price === 'number' && entry.price > 0) {
+    priceDisplay = `${curr}${entry.price.toFixed(2)}`;
+    targetCurrentPrice.className = 'stat-val text-green';
+  } else if (entry.error || entry.success === false) {
+    priceDisplay = `${curr}0.00 (Extraction Notice)`;
+    targetCurrentPrice.className = 'stat-val text-amber';
+  } else {
+    priceDisplay = `${curr}0.00 (Scanning...)`;
+    targetCurrentPrice.className = 'stat-val text-cyan';
+  }
 
   targetCurrentPrice.textContent = priceDisplay;
   targetTitle.textContent = entry.item || 'Live Web Target';
@@ -289,6 +298,7 @@ function handleSentinelCheck(entry, metrics) {
     targetExternalLink.href = adapter.url;
     targetThresholdDisplay.textContent = `${curr}${adapter.threshold.toFixed(2)}`;
     thresholdValueBadge.textContent = `${curr}${adapter.threshold.toFixed(2)}`;
+    thresholdInput.value = adapter.threshold;
   } else if (entry.threshold) {
     targetThresholdDisplay.textContent = `${curr}${entry.threshold.toFixed(2)}`;
     thresholdValueBadge.textContent = `${curr}${entry.threshold.toFixed(2)}`;
@@ -505,6 +515,10 @@ async function rejectGate(gateId) {
 targetSelector.addEventListener('change', async (e) => {
   const selectedId = e.target.value;
   if (!selectedId) return;
+
+  targetCurrentPrice.textContent = 'Scanning live price...';
+  targetCurrentPrice.className = 'stat-val text-cyan';
+
   try {
     const res = await fetch('/api/monitor/select-adapter', {
       method: 'POST',
@@ -518,6 +532,7 @@ targetSelector.addEventListener('change', async (e) => {
       if (data.adapter) {
         thresholdInput.value = data.adapter.threshold;
         thresholdValueBadge.textContent = `$${data.adapter.threshold.toFixed(2)}`;
+        targetExternalLink.href = data.adapter.url;
       }
       if (data.latestCheck) {
         handleSentinelCheck(data.latestCheck, data.metrics || state.metrics);

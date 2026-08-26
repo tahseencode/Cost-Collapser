@@ -4,7 +4,7 @@ import fs from 'fs';
 import { ADAPTER_PRESETS } from './presets.js';
 import { MOCK_PRODUCTS } from '../mock-store/storeData.js';
 
-// Locate installed Chrome / Edge browser binary across Windows and Linux
+// Locate installed Chrome / Edge / Brave browser binary across Windows and Linux
 function getBrowserExecutablePath() {
   const candidates = [
     'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
@@ -14,6 +14,8 @@ function getBrowserExecutablePath() {
     (process.env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)') + '\\Google\\Chrome\\Application\\chrome.exe',
     'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
     'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+    'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe',
+    (process.env.LOCALAPPDATA || '') + '\\BraveSoftware\\Brave-Browser\\Application\\brave.exe',
     '/usr/bin/google-chrome',
     '/usr/bin/google-chrome-stable',
     '/usr/bin/chromium',
@@ -52,6 +54,10 @@ export function extractVendorFromUrl(rawUrl) {
     const parts = hostname.split('.');
     if (parts.length >= 2) {
       const brand = parts[0];
+      if (brand === 'books' && parts.includes('toscrape')) return 'Books to Scrape';
+      if (brand === 'dummyjson') return 'DummyJSON E-Commerce';
+      if (brand === 'fakestoreapi') return 'FakeStore API';
+      if (brand === 'coingecko') return 'CoinGecko Crypto Index';
       return brand.charAt(0).toUpperCase() + brand.slice(1);
     }
     return hostname;
@@ -67,7 +73,7 @@ export function cleanProductTitle(rawTitle, fallback = 'Live Web Product') {
   if (!rawTitle || typeof rawTitle !== 'string') return fallback;
   let title = rawTitle.replace(/\s+/g, ' ').trim();
   // Strip common e-commerce title suffixes
-  title = title.replace(/\s*[-|–—:•]\s*(?:Amazon(?:\.com|\.in|\.co\.uk)?|eBay|Walmart(?:\.com)?|Target|Best Buy|AliExpress|Flipkart|Etsy|H&M|Zara|Nike).*$/i, '');
+  title = title.replace(/\s*[-|–—:•]\s*(?:Amazon(?:\.com|\.in|\.co\.uk)?|eBay|Walmart(?:\.com)?|Target|Best Buy|AliExpress|Flipkart|Etsy|H&M|Zara|Nike|Books to Scrape).*$/i, '');
   title = title.replace(/\s*\|\s*Official Site$/i, '');
   return title.trim() || fallback;
 }
@@ -94,7 +100,7 @@ export class AdapterEngine {
     const vendorName = adapterConfig.selectors?.vendor || extractVendorFromUrl(cleanUrl);
 
     const registered = {
-      type: adapterConfig.type || 'html-selector',
+      type: adapterConfig.type || (cleanUrl.includes('api.') || cleanUrl.includes('api/') || cleanUrl.endsWith('.json') ? 'json-api' : 'html-selector'),
       threshold: parseFloat(adapterConfig.threshold || 50.0),
       selectors: {
         item: adapterConfig.selectors?.item || 'h1, #product-title, .product-title, .title',
@@ -177,29 +183,29 @@ export class AdapterEngine {
       try {
         fastResult = await this.executeHttpFetch(adapter, startTime);
       } catch (httpErr) {
-        console.warn(`[AdapterEngine] Tier 1 fetch error for ${adapter.url}: ${httpErr.message}`);
+        console.warn(`[AdapterEngine] Tier 1 fetch notice for ${adapter.url}: ${httpErr.message}`);
       }
       
       // If Tier 1 successfully extracted product title and price > 0, return immediately
-      if (fastResult && fastResult.success && fastResult.price > 0 && !/access denied|robot|captcha|blocked/i.test(fastResult.item)) {
+      if (fastResult && fastResult.success && fastResult.price > 0 && !/access denied|robot|captcha|blocked|403 forbidden/i.test(fastResult.item)) {
         return fastResult;
       }
 
       // 3. Tier 2: Real Headless Browser Engine Fallback (for SPAs, React/Next.js hydration, Cloudflare)
       if (this.browserPath) {
         try {
-          console.log(`[AdapterEngine] Tier 1 empty or blocked for ${adapter.url}. Engaging Headless Browser...`);
+          console.log(`[AdapterEngine] Engaging Headless Browser for ${adapter.url}...`);
           const browserResult = await this.executeRealBrowser(adapter, startTime);
           if (browserResult && browserResult.price > 0) {
             return browserResult;
           }
         } catch (browserError) {
-          console.warn(`[AdapterEngine] Headless browser execution notice: ${browserError.message}`);
+          console.warn(`[AdapterEngine] Headless browser notice: ${browserError.message}`);
         }
       }
 
-      // If fastResult exists, return it (even if price is 0, keeping item name / status)
-      if (fastResult) {
+      // If fastResult exists with a valid item title, return it even if price is 0
+      if (fastResult && fastResult.item && !/access denied|robot|captcha/i.test(fastResult.item)) {
         return fastResult;
       }
 
@@ -217,7 +223,8 @@ export class AdapterEngine {
         triggered: false,
         timestamp: new Date().toISOString(),
         latencyMs,
-        tokensConsumed: 0
+        tokensConsumed: 0,
+        error: 'Price selector or value not found on page'
       };
 
     } catch (error) {
@@ -225,6 +232,14 @@ export class AdapterEngine {
       return {
         success: false,
         adapterId: adapter?.id || 'unknown',
+        item: adapter?.name || 'Live Web Target',
+        price: 0,
+        currency: '$',
+        inStock: true,
+        sku: 'UNVERIFIED',
+        vendor: extractVendorFromUrl(adapter?.url || ''),
+        threshold: adapter?.threshold || 50.0,
+        triggered: false,
         error: error.message,
         timestamp: new Date().toISOString(),
         latencyMs,
@@ -388,10 +403,10 @@ export class AdapterEngine {
       if (found) return;
       try {
         const text = $(el).text();
-        if (text.includes('"price"') || text.includes('"currentPrice"')) {
+        if (text.includes('"price"') || text.includes('"currentPrice"') || text.includes('"sale_price"')) {
           const obj = JSON.parse(text);
-          if (obj.price || obj.product?.price) {
-            const val = obj.price || obj.product?.price;
+          if (obj.price || obj.product?.price || obj.currentPrice) {
+            const val = obj.price || obj.product?.price || obj.currentPrice;
             const parsed = this._parsePrice(String(val));
             if (parsed.price > 0) {
               found = {
@@ -437,12 +452,21 @@ export class AdapterEngine {
     }
 
     const contentType = response.headers.get('content-type') || '';
-    if (contentType.includes('application/json')) {
+    if (contentType.includes('application/json') || url.endsWith('.json')) {
       const jsonData = await response.json();
       return this._processJsonResponse(adapter, jsonData, startTime);
     }
 
     const html = await response.text();
+
+    // If response body is actually JSON despite content-type
+    if (html.trim().startsWith('{') && html.trim().endsWith('}')) {
+      try {
+        const jsonData = JSON.parse(html);
+        return this._processJsonResponse(adapter, jsonData, startTime);
+      } catch {}
+    }
+
     const $ = cheerio.load(html);
     const vendorName = adapter.selectors?.vendor || extractVendorFromUrl(url);
 
@@ -577,7 +601,7 @@ export class AdapterEngine {
 
     // === STRATEGY 4: DOM CSS Selectors (Configured + Universal) ===
     let rawItem = '';
-    const titleSelectors = (adapter.selectors?.item || '').split(',').map(s => s.trim()).filter(Boolean);
+    const titleSelectors = (adapter.selectors?.item && !adapter.selectors.item.includes('#product-title,') ? adapter.selectors.item : '').split(',').map(s => s.trim()).filter(Boolean);
     titleSelectors.push(
       '#productTitle', '#product-title', '.product-title', '.product-name',
       '.pdp-title', '.x-item-title__mainTitle', '[data-testid*="title" i]',
@@ -602,6 +626,7 @@ export class AdapterEngine {
       // Amazon
       '#corePrice_feature_div .a-offscreen', '#corePriceDisplay_desktop_feature_div .a-offscreen',
       '.a-price .a-offscreen', '#priceblock_ourprice', '#priceblock_dealprice', '#price_inside_buybox',
+      '.apexPriceToPay .a-offscreen',
       // eBay
       '.x-price-primary .ux-textspans', '.x-price-approx__price .ux-textspans', '#prcIsum', '#mm-saleDscPrc',
       // Walmart
@@ -653,6 +678,7 @@ export class AdapterEngine {
       $('span, div, p, b, strong, em, ins, td, li, h2, h3, h4, dd, label, data, font')
         .each((i, el) => {
           const $el = $(el);
+          if ($el.children().length > 2) return;
           const txt = $el.text().trim();
           if (txt.length > 0 && txt.length < 50) {
             const match = txt.match(priceRegex);
@@ -718,7 +744,8 @@ export class AdapterEngine {
         '--disable-gpu',
         '--disable-blink-features=AutomationControlled',
         '--no-first-run',
-        '--no-default-browser-check'
+        '--no-default-browser-check',
+        '--window-size=1920,1080'
       ],
       ignoreDefaultArgs: ['--enable-automation']
     });
@@ -726,12 +753,18 @@ export class AdapterEngine {
     try {
       const page = await browser.newPage();
       await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36');
-      await page.setViewport({ width: 1280, height: 800 });
+      await page.setViewport({ width: 1920, height: 1080 });
 
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 12000 });
+      // Stealth anti-detection injection
+      await page.evaluateOnNewDocument(() => {
+        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+        window.chrome = { runtime: {} };
+      });
 
-      // Short 1.5s delay for dynamic React / SPA hydration
-      await new Promise(r => setTimeout(r, 1500));
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
+
+      // Short delay for dynamic React / SPA hydration
+      await new Promise(r => setTimeout(r, 2000));
 
       const extracted = await page.evaluate(() => {
         // 1. JSON-LD in DOM
@@ -760,12 +793,12 @@ export class AdapterEngine {
         }
 
         // 2. Meta tags
-        const metaPrice = document.querySelector('meta[property="og:price:amount"], meta[property="product:price:amount"], meta[itemprop="price"]');
+        const metaPrice = document.querySelector('meta[property="og:price:amount"], meta[property="product:price:amount"], meta[itemprop="price"], meta[name="price"]');
         if (metaPrice) {
-          const val = parseFloat(metaPrice.getAttribute('content') || '');
+          const val = parseFloat(metaPrice.getAttribute('content') || metaPrice.getAttribute('value') || '');
           if (val > 0) {
-            const metaCurr = document.querySelector('meta[property="og:price:currency"], meta[property="product:price:currency"]');
-            const metaTitle = document.querySelector('meta[property="og:title"]');
+            const metaCurr = document.querySelector('meta[property="og:price:currency"], meta[property="product:price:currency"], meta[itemprop="priceCurrency"]');
+            const metaTitle = document.querySelector('meta[property="og:title"], meta[name="twitter:title"]');
             return {
               title: metaTitle?.getAttribute('content') || document.querySelector('h1')?.textContent.trim() || document.title,
               price: val,
@@ -781,28 +814,30 @@ export class AdapterEngine {
         let currency = '$';
 
         const priceEls = document.querySelectorAll(
-          '[itemprop="price"], [class*="price" i], [class*="Price" i], [data-price], [data-product-price], span, div, p, b, strong, ins'
+          '[itemprop="price"], .a-price .a-offscreen, #corePrice_feature_div .a-offscreen, .priceView-customer-price span, .x-price-primary, [data-testid="item-price"], [class*="price" i], [class*="Price" i], [data-price], [data-product-price], span, div, p, b, strong, ins'
         );
         for (const el of priceEls) {
           const dataPrice = el.getAttribute('content') || el.getAttribute('data-price') || el.getAttribute('data-value');
           if (dataPrice) {
             const val = parseFloat(dataPrice.replace(/,/g, ''));
-            if (val > 0) { price = val; break; }
+            if (val > 0 && val < 10000000) { price = val; break; }
           }
 
           const txt = el.textContent.trim();
           if (txt.length > 0 && txt.length < 60) {
-            const match = txt.match(/[$£€₹¥]\s*[0-9][0-9,]*(?:\.[0-9]{1,2})?/);
+            const match = txt.match(/[$£€₹¥]\s*[0-9][0-9,]*(?:\.[0-9]{1,2})?|(?:USD|EUR|GBP|INR|CAD|AUD)\s*[0-9][0-9,]*(?:\.[0-9]{1,2})?/i);
             if (match) {
-              const numStr = match[0].replace(/[^0-9.,]/g, '').replace(/,/g, '');
-              const val = parseFloat(numStr);
-              if (val > 0 && val < 10000000) {
-                if (match[0].includes('£')) currency = '£';
-                else if (match[0].includes('€')) currency = '€';
-                else if (match[0].includes('₹')) currency = '₹';
-                else if (match[0].includes('¥')) currency = '¥';
-                price = val;
-                break;
+              const numMatch = match[0].match(/[0-9][0-9,]*(?:\.[0-9]{1,2})?/);
+              if (numMatch) {
+                const val = parseFloat(numMatch[0].replace(/,/g, ''));
+                if (val > 0 && val < 10000000) {
+                  if (match[0].includes('£') || /GBP/i.test(match[0])) currency = '£';
+                  else if (match[0].includes('€') || /EUR/i.test(match[0])) currency = '€';
+                  else if (match[0].includes('₹') || /INR/i.test(match[0])) currency = '₹';
+                  else if (match[0].includes('¥')) currency = '¥';
+                  price = val;
+                  break;
+                }
               }
             }
           }
@@ -841,8 +876,13 @@ export class AdapterEngine {
    */
   async executeJsonApi(adapter, startTime) {
     const url = normalizeUrl(adapter.url);
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const response = await fetch(url, {
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
+      }
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}: Failed to fetch JSON API ${url}`);
     const jsonData = await response.json();
     return this._processJsonResponse(adapter, jsonData, startTime);
   }
@@ -852,7 +892,12 @@ export class AdapterEngine {
    */
   _processJsonResponse(adapter, jsonData, startTime) {
     let price = 0;
-    let itemName = adapter.selectors?.item || adapter.name || '';
+    let itemName = '';
+
+    // If explicit adapter name is provided and doesn't look like a raw selector
+    if (adapter.name && !adapter.name.startsWith('#') && !adapter.name.startsWith('.') && !adapter.name.includes('h1')) {
+      itemName = adapter.name;
+    }
 
     if (adapter.jsonPath) {
       const parts = adapter.jsonPath.split('.');
@@ -863,44 +908,54 @@ export class AdapterEngine {
       price = typeof curr === 'number' ? curr : parseFloat(curr) || 0;
     }
 
-    if (!price && typeof jsonData === 'object' && !Array.isArray(jsonData)) {
-      const priceKeys = ['price', 'cost', 'amount', 'sale_price', 'current_price', 'usd'];
-      for (const key of priceKeys) {
-        if (jsonData[key] !== undefined) {
-          const val = parseFloat(jsonData[key]);
-          if (val > 0) { price = val; break; }
+    if (!price && typeof jsonData === 'object' && jsonData !== null) {
+      if (Array.isArray(jsonData)) {
+        if (jsonData.length > 0 && typeof jsonData[0] === 'object') {
+          return this._processJsonResponse(adapter, jsonData[0], startTime);
         }
-      }
-      if (!price) {
-        for (const val of Object.values(jsonData)) {
-          if (typeof val === 'object' && val !== null) {
-            for (const k of ['usd', 'price', 'amount']) {
-              if (val[k] !== undefined) {
-                const p = parseFloat(val[k]);
-                if (p > 0) { price = p; break; }
-              }
-            }
-            if (price > 0) break;
+      } else {
+        const priceKeys = ['price', 'cost', 'amount', 'sale_price', 'current_price', 'usd', 'rate', 'value'];
+        for (const key of priceKeys) {
+          if (jsonData[key] !== undefined) {
+            const val = parseFloat(jsonData[key]);
+            if (val > 0) { price = val; break; }
           }
         }
-      }
+        if (!price) {
+          for (const val of Object.values(jsonData)) {
+            if (typeof val === 'object' && val !== null) {
+              for (const k of ['usd', 'price', 'amount', 'rate']) {
+                if (val[k] !== undefined) {
+                  const p = parseFloat(val[k]);
+                  if (p > 0) { price = p; break; }
+                }
+              }
+              if (price > 0) break;
+            }
+          }
+        }
 
-      const titleKeys = ['title', 'name', 'product_name', 'item', 'label', 'description'];
-      for (const key of titleKeys) {
-        if (jsonData[key] && typeof jsonData[key] === 'string') {
-          itemName = jsonData[key];
-          break;
+        if (!itemName) {
+          const titleKeys = ['title', 'name', 'product_name', 'item', 'label', 'description'];
+          for (const key of titleKeys) {
+            if (jsonData[key] && typeof jsonData[key] === 'string') {
+              itemName = jsonData[key];
+              break;
+            }
+          }
         }
       }
     }
 
-    const vendorName = adapter.selectors?.vendor || extractVendorFromUrl(adapter.url) || 'Real-Time API';
+    const vendorName = (adapter.selectors?.vendor && !adapter.selectors.vendor.includes('#')) 
+      ? adapter.selectors.vendor 
+      : extractVendorFromUrl(adapter.url) || 'Real-Time API';
     const latencyMs = Math.round(performance.now() - startTime);
 
     return {
       success: price > 0,
       adapterId: adapter.id,
-      item: cleanProductTitle(itemName || 'API Product'),
+      item: cleanProductTitle(itemName || adapter.name || 'API Product'),
       price: price > 0 ? parseFloat(price.toFixed(2)) : 0,
       currency: '$',
       inStock: true,
@@ -916,4 +971,3 @@ export class AdapterEngine {
 }
 
 export const adapterEngine = new AdapterEngine();
-

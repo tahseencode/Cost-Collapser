@@ -1,3 +1,5 @@
+import * as cheerio from 'cheerio';
+
 export const ADAPTER_PRESETS = {
   'live-books-attic': {
     id: 'live-books-attic',
@@ -6,6 +8,22 @@ export const ADAPTER_PRESETS = {
     type: 'html-selector',
     description: 'Live public e-commerce bookstore product page',
     threshold: 55.00,
+    selectors: {
+      item: 'h1',
+      price: '.price_color, .product_main .price_color',
+      currency: '.price_color',
+      inStock: '.instock.availability',
+      sku: '.table-striped tr:first-child td',
+      vendor: 'Books to Scrape Global Ltd'
+    }
+  },
+  'live-books-sapiens': {
+    id: 'live-books-sapiens',
+    name: 'Books Store (Live Web) - Sapiens',
+    url: 'https://books.toscrape.com/catalogue/sapiens-a-brief-history-of-humankind_996/index.html',
+    type: 'html-selector',
+    description: 'Live public e-commerce bookstore product page',
+    threshold: 60.00,
     selectors: {
       item: 'h1',
       price: '.price_color, .product_main .price_color',
@@ -28,6 +46,19 @@ export const ADAPTER_PRESETS = {
       vendor: 'CoinGecko Global Crypto Index'
     }
   },
+  'live-tech-gadgets': {
+    id: 'live-tech-gadgets',
+    name: 'Tech & Beauty Store (Live Feed) - Essence Mascara',
+    url: 'https://dummyjson.com/products/1',
+    type: 'json-api',
+    description: 'Live public e-commerce API product catalog',
+    threshold: 12.00,
+    jsonPath: 'price',
+    selectors: {
+      item: 'Essence Mascara Lash Princess',
+      vendor: 'DummyJSON Global Wholesale'
+    }
+  },
   'apex-industrial': {
     id: 'apex-industrial',
     name: 'Apex Titan Carbide Drill Bit 5000',
@@ -42,18 +73,6 @@ export const ADAPTER_PRESETS = {
       inStock: '#stock-status',
       sku: '#product-sku',
       vendor: 'Apex Industrial Supply Corp'
-    }
-  },
-  'live-hm-onesie': {
-    id: 'live-hm-onesie',
-    name: 'H&M (Live E-Commerce) - Newborn Bodysuits',
-    url: 'https://www2.hm.com/en_us/productpage.1235070001.html',
-    type: 'html-selector',
-    description: 'Live H&M US e-commerce product catalog',
-    threshold: 15.00,
-    selectors: {
-      item: 'h1',
-      vendor: 'H&M Hennes & Mauritz US'
     }
   }
 };
